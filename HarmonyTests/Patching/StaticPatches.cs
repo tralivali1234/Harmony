@@ -1,8 +1,9 @@
-﻿using Harmony;
+using Harmony;
 using Harmony.ILCopying;
 using HarmonyTests.Assets;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace HarmonyTests
@@ -31,7 +32,7 @@ namespace HarmonyTests
 			MethodInfo prefixMethod;
 			MethodInfo postfixMethod;
 			MethodInfo transpilerMethod;
-			PatchTools.GetPatches(typeof(Class1Patch), originalMethod, out prefixMethod, out postfixMethod, out transpilerMethod);
+			PatchTools.GetPatches(typeof(Class1Patch), out prefixMethod, out postfixMethod, out transpilerMethod);
 
 			Assert.AreSame(realPrefix, prefixMethod);
 			Assert.AreSame(realPostfix, postfixMethod);
@@ -40,7 +41,7 @@ namespace HarmonyTests
 			var instance = HarmonyInstance.Create("test");
 			Assert.IsNotNull(instance);
 
-			var patcher = new PatchProcessor(instance, originalMethod, new HarmonyMethod(prefixMethod), new HarmonyMethod(postfixMethod), new HarmonyMethod(transpilerMethod));
+			var patcher = new PatchProcessor(instance, new List<MethodBase> { originalMethod }, new HarmonyMethod(prefixMethod), new HarmonyMethod(postfixMethod), new HarmonyMethod(transpilerMethod));
 			Assert.IsNotNull(patcher);
 
 			var originalMethodStartPre = Memory.GetMethodStart(originalMethod);
@@ -49,7 +50,7 @@ namespace HarmonyTests
 			Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
 			unsafe
 			{
-				byte patchedCode = *(byte*) originalMethodStartPre;
+				var patchedCode = *(byte*)originalMethodStartPre;
 				if (IntPtr.Size == sizeof(long))
 					Assert.IsTrue(patchedCode == 0x48);
 				else
@@ -83,7 +84,7 @@ namespace HarmonyTests
 			MethodInfo prefixMethod;
 			MethodInfo postfixMethod;
 			MethodInfo transpilerMethod;
-			PatchTools.GetPatches(typeof(Class2Patch), originalMethod, out prefixMethod, out postfixMethod, out transpilerMethod);
+			PatchTools.GetPatches(typeof(Class2Patch), out prefixMethod, out postfixMethod, out transpilerMethod);
 
 			Assert.AreSame(realPrefix, prefixMethod);
 			Assert.AreSame(realPostfix, postfixMethod);
@@ -92,7 +93,7 @@ namespace HarmonyTests
 			var instance = HarmonyInstance.Create("test");
 			Assert.IsNotNull(instance);
 
-			var patcher = new PatchProcessor(instance, originalMethod, new HarmonyMethod(prefixMethod), new HarmonyMethod(postfixMethod), new HarmonyMethod(transpilerMethod));
+			var patcher = new PatchProcessor(instance, new List<MethodBase> { originalMethod }, new HarmonyMethod(prefixMethod), new HarmonyMethod(postfixMethod), new HarmonyMethod(transpilerMethod));
 			Assert.IsNotNull(patcher);
 
 			var originalMethodStartPre = Memory.GetMethodStart(originalMethod);
@@ -101,7 +102,7 @@ namespace HarmonyTests
 			Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
 			unsafe
 			{
-				byte patchedCode = *(byte*) originalMethodStartPre;
+				var patchedCode = *(byte*)originalMethodStartPre;
 				if (IntPtr.Size == sizeof(long))
 					Assert.IsTrue(patchedCode == 0x48);
 				else
