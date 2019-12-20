@@ -6,24 +6,26 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Harmony
+namespace HarmonyLib
 {
+	/// <summary>A file log for debugging</summary>
 	public static class FileLog
 	{
+		/// <summary>Full pathname of the log file</summary>
 		public static string logPath;
+
+		/// <summary>The indent character</summary>
 		public static char indentChar = '\t';
-		public static int indentLevel = 0;
+
+		/// <summary>The indent level</summary>
+		public static int indentLevel;
+
+		/// <summary>A buffer</summary>
 		static List<string> buffer = new List<string>();
 
 		static FileLog()
 		{
 			logPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + Path.DirectorySeparatorChar + "harmony.log.txt";
-			if (HarmonyInstance.DEBUG)
-			{
-				var version = Assembly.GetExecutingAssembly().GetName().Version;
-				Log("### Harmony " + version + " started at " + DateTime.Now.ToString("yyyy-MM-dd hh.mm.ss"));
-				Log("### ");
-			}
 		}
 
 		static string IndentString()
@@ -31,14 +33,18 @@ namespace Harmony
 			return new string(indentChar, indentLevel);
 		}
 
+		/// <summary>Changes indent depth</summary>
+		/// <param name="delta">The value to add to the indent level</param>
+		///
 		public static void ChangeIndent(int delta)
 		{
 			indentLevel = Math.Max(0, indentLevel + delta);
 		}
 
-		// use this method only if you are sure that FlushBuffer will be called
-		// or else logging information is incomplete in case of a crash
-		//
+		/// <summary>Log a string in a buffered way. Use this method only if you are sure that FlushBuffer will be called
+		/// or else logging information is incomplete in case of a crash</summary>
+		/// <param name="str">The string to log</param>
+		///
 		public static void LogBuffered(string str)
 		{
 			lock (logPath)
@@ -47,22 +53,64 @@ namespace Harmony
 			}
 		}
 
+		/// <summary>Logs a list of string in a buffered way. Use this method only if you are sure that FlushBuffer will be called
+		/// or else logging information is incomplete in case of a crash</summary>
+		/// <param name="strings">The strings to log (they will not be re-indented)</param>
+		///
+		public static void LogBuffered(List<string> strings)
+		{
+			lock (logPath)
+			{
+				buffer.AddRange(strings);
+			}
+		}
+
+		/// <summary>Returns the log buffer and optionally empties it</summary>
+		/// <param name="clear">True to empty the buffer</param>
+		/// <returns>The buffer.</returns>
+		///
+		public static List<string> GetBuffer(bool clear)
+		{
+			lock (logPath)
+			{
+				var result = buffer;
+				if (clear)
+					buffer = new List<string>();
+				return result;
+			}
+		}
+
+		/// <summary>Replaces the buffer with new lines</summary>
+		/// <param name="buffer">The lines to store</param>
+		///
+		public static void SetBuffer(List<string> buffer)
+		{
+			lock (logPath)
+			{
+				FileLog.buffer = buffer;
+			}
+		}
+
+		/// <summary>Flushes the log buffer to disk (use in combination with LogBuffered)</summary>
 		public static void FlushBuffer()
 		{
 			lock (logPath)
 			{
-				using (var writer = File.AppendText(logPath))
+				if (buffer.Count > 0)
 				{
-					foreach (var str in buffer)
-						writer.WriteLine(str);
+					using (var writer = File.AppendText(logPath))
+					{
+						foreach (var str in buffer)
+							writer.WriteLine(str);
+					}
+					buffer.Clear();
 				}
-				buffer.Clear();
 			}
 		}
 
-		// this is the slower method that flushes changes directly to the file
-		// to prevent missing information in case of a cache
-		//
+		/// <summary>Log a string directly to disk. Slower method that prevents missing information in case of a crash</summary>
+		/// <param name="str">The string to log.</param>
+		///
 		public static void Log(string str)
 		{
 			lock (logPath)
@@ -74,6 +122,7 @@ namespace Harmony
 			}
 		}
 
+		/// <summary>Resets and deletes the log</summary>
 		public static void Reset()
 		{
 			lock (logPath)
@@ -83,6 +132,10 @@ namespace Harmony
 			}
 		}
 
+		/// <summary>Logs some bytes as hex values</summary>
+		/// <param name="ptr">The pointer to some memory</param>
+		/// <param name="len">The length of bytes to log</param>
+		///
 		public static unsafe void LogBytes(long ptr, int len)
 		{
 			lock (logPath)
@@ -101,7 +154,7 @@ namespace Harmony
 							s = "";
 						}
 						else if (i % 4 == 0)
-							s = s + " ";
+							s += " ";
 					}
 					p++;
 				}

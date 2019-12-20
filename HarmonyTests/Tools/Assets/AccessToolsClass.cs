@@ -1,30 +1,39 @@
-namespace HarmonyTests.Assets
+namespace HarmonyLibTests.Assets
 {
 	public class AccessToolsClass
 	{
-		private class Inner
+		class Inner
 		{
 		}
+
+		public const string field1Value = "hello";
+		public const string field2Value = "dummy";
+		public const string field3Value = "!";
 
 		private string field;
-		private string field2;
+		private readonly string field2;
+		private static string field3 = field3Value;
 
-		private int _property;
-		private int Property
+		int _property;
+
+#pragma warning disable IDE0051
+		int Property
 		{
 			get => _property;
 			set => _property = value;
 		}
-		private int Property2
+		int Property2
 		{
 			get => _property;
 			set => _property = value;
 		}
+#pragma warning restore IDE0051
 
 		public AccessToolsClass()
 		{
-			field = "hello";
-			field2 = "dummy";
+			field = field1Value;
+			field2 = field2Value;
+			field3 = field3Value;
 		}
 
 		public string Method()
@@ -41,5 +50,14 @@ namespace HarmonyTests.Assets
 		{
 			field = val;
 		}
+
+		public string Method3()
+		{
+			return field3;
+		}
+	}
+
+	public class AccessToolsSubClass : AccessToolsClass
+	{
 	}
 }

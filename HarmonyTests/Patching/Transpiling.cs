@@ -1,28 +1,27 @@
-using Harmony;
-using Harmony.ILCopying;
-using HarmonyTests.Assets;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using HarmonyLib;
+using HarmonyLibTests.Assets;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
 
-namespace HarmonyTests.Patching
+namespace HarmonyLibTests.Patching
 {
-	[TestClass]
+	[TestFixture]
 	public class Transpiling
 	{
 		static CodeInstruction[] savedInstructions = null;
 
 #if DEBUG
 		static OpCode insertLoc = OpCodes.Stloc_3;
-		static int codeLength = 75;
+		static readonly int codeLength = 75;
 #else
-		static OpCode insertLoc = OpCodes.Stloc_1;
-		static int codeLength = 61;
+		static readonly OpCode insertLoc = OpCodes.Stloc_1;
+		static readonly int codeLength = 61;
 #endif
 
-		[TestMethod]
+		[Test]
 		public void TestTranspilerException1()
 		{
 			var test = new Class3();
@@ -36,7 +35,7 @@ namespace HarmonyTests.Patching
 			var transpiler = AccessTools.Method(typeof(Transpiling), nameof(Transpiling.TestTranspiler));
 			Assert.IsNotNull(transpiler);
 
-			var instance = HarmonyInstance.Create("test-exception1");
+			var instance = new Harmony("test-exception1");
 			instance.Patch(original, null, null, new HarmonyMethod(transpiler));
 			Assert.IsNotNull(savedInstructions);
 			Assert.AreEqual(savedInstructions.Length, codeLength);
@@ -45,7 +44,7 @@ namespace HarmonyTests.Patching
 			Assert.AreEqual(test.GetLog, "restart,test,patch,ex:DivideByZeroException,finally,end");
 		}
 
-		public static IEnumerable<CodeInstruction> TestTranspiler(ILGenerator il, IEnumerable<CodeInstruction> instructions)
+		public static IEnumerable<CodeInstruction> TestTranspiler(IEnumerable<CodeInstruction> instructions)
 		{
 			savedInstructions = new CodeInstruction[instructions.Count()];
 			instructions.ToList().CopyTo(savedInstructions);
@@ -57,7 +56,7 @@ namespace HarmonyTests.Patching
 					var blocks = instruction.blocks;
 					instruction.blocks = new List<ExceptionBlock>();
 
-					var log = AccessTools.Field(typeof(Class3), "log");
+					var log = AccessTools.DeclaredField(typeof(Class3), "log");
 					var tst = typeof(string);
 					var concat = AccessTools.Method(typeof(string), nameof(string.Concat), new Type[] { tst, tst });
 					yield return new CodeInstruction(OpCodes.Ldarg_0) { blocks = blocks };
