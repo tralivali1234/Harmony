@@ -10,7 +10,7 @@
     <meta name="viewport" content="width=device-width">
     <meta name="title" content="Class Patch
    ">
-    <meta name="generator" content="docfx 2.42.3.0">
+    <meta name="generator" content="docfx 2.59.4.0">
     
     <link rel="shortcut icon" href="../favicon.ico">
     <link rel="stylesheet" href="../styles/docfx.vendor.css">
@@ -81,29 +81,52 @@
     <div class="level0"><span class="xref">System.Object</span></div>
     <div class="level1"><span class="xref">Patch</span></div>
   </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><span class="xref">System.IComparable</span></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <span class="xref">System.Object.ToString()</span>
+    </div>
+    <div>
+      <span class="xref">System.Object.Equals(System.Object, System.Object)</span>
+    </div>
+    <div>
+      <span class="xref">System.Object.ReferenceEquals(System.Object, System.Object)</span>
+    </div>
+    <div>
+      <span class="xref">System.Object.GetType()</span>
+    </div>
+    <div>
+      <span class="xref">System.Object.MemberwiseClone()</span>
+    </div>
+  </div>
   <h6><strong>Namespace</strong>: <a class="xref" href="HarmonyLib.html">HarmonyLib</a></h6>
   <h6><strong>Assembly</strong>: 0Harmony.dll</h6>
   <h5 id="HarmonyLib_Patch_syntax">Syntax</h5>
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public class Patch : IComparable</code></pre>
+    <pre><code class="lang-csharp hljs">[Serializable]
+public class Patch : IComparable</code></pre>
   </div>
   <h3 id="constructors">Constructors
   </h3>
   <span class="small pull-right mobile-hide">
     <span class="divider">|</span>
-    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch__ctor_MethodInfo_System_Int32_System_String_System_Int32_System_String___System_String___.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.%23ctor(MethodInfo%2CSystem.Int32%2CSystem.String%2CSystem.Int32%2CSystem.String%5B%5D%2CSystem.String%5B%5D)%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
+    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch__ctor_HarmonyLib_HarmonyMethod_System_Int32_System_String_.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.%23ctor(HarmonyLib.HarmonyMethod%2CSystem.Int32%2CSystem.String)%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L252">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L397">View Source</a>
   </span>
   <a id="HarmonyLib_Patch__ctor_" data-uid="HarmonyLib.Patch.#ctor*"></a>
-  <h4 id="HarmonyLib_Patch__ctor_MethodInfo_System_Int32_System_String_System_Int32_System_String___System_String___" data-uid="HarmonyLib.Patch.#ctor(MethodInfo,System.Int32,System.String,System.Int32,System.String[],System.String[])">Patch(MethodInfo, Int32, String, Int32, String[], String[])</h4>
+  <h4 id="HarmonyLib_Patch__ctor_HarmonyLib_HarmonyMethod_System_Int32_System_String_" data-uid="HarmonyLib.Patch.#ctor(HarmonyLib.HarmonyMethod,System.Int32,System.String)">Patch(HarmonyMethod, Int32, String)</h4>
   <div class="markdown level1 summary"><p>Creates a patch</p>
 </div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="decalaration">Declaration</h5>
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Patch(MethodInfo patch, int index, string owner, int priority, string[] before, string[] after)</code></pre>
+    <pre><code class="lang-csharp hljs">public Patch(HarmonyMethod method, int index, string owner)</code></pre>
   </div>
   <h5 class="parameters">Parameters</h5>
   <table class="table table-bordered table-striped table-condensed">
@@ -116,9 +139,9 @@
     </thead>
     <tbody>
       <tr>
-        <td><span class="xref">MethodInfo</span></td>
-        <td><span class="parametername">patch</span></td>
-        <td><p>The patch</p>
+        <td><a class="xref" href="HarmonyLib.HarmonyMethod.html">HarmonyMethod</a></td>
+        <td><span class="parametername">method</span></td>
+        <td><p>The method of the patch</p>
 </td>
       </tr>
       <tr>
@@ -130,25 +153,77 @@
       <tr>
         <td><span class="xref">System.String</span></td>
         <td><span class="parametername">owner</span></td>
-        <td><p>The owner (Harmony ID)</p>
+        <td><p>An owner (Harmony ID)</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch__ctor_System_Reflection_MethodInfo_System_Int32_System_String_System_Int32_System_String___System_String___System_Boolean_.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.%23ctor(System.Reflection.MethodInfo%2CSystem.Int32%2CSystem.String%2CSystem.Int32%2CSystem.String%5B%5D%2CSystem.String%5B%5D%2CSystem.Boolean)%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L380">View Source</a>
+  </span>
+  <a id="HarmonyLib_Patch__ctor_" data-uid="HarmonyLib.Patch.#ctor*"></a>
+  <h4 id="HarmonyLib_Patch__ctor_System_Reflection_MethodInfo_System_Int32_System_String_System_Int32_System_String___System_String___System_Boolean_" data-uid="HarmonyLib.Patch.#ctor(System.Reflection.MethodInfo,System.Int32,System.String,System.Int32,System.String[],System.String[],System.Boolean)">Patch(MethodInfo, Int32, String, Int32, String[], String[], Boolean)</h4>
+  <div class="markdown level1 summary"><p>Creates a patch</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="decalaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Patch(MethodInfo patch, int index, string owner, int priority, string[] before, string[] after, bool debug)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-striped table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">System.Reflection.MethodInfo</span></td>
+        <td><span class="parametername">patch</span></td>
+        <td><p>The method of the patch</p>
+</td>
+      </tr>
+      <tr>
+        <td><span class="xref">System.Int32</span></td>
+        <td><span class="parametername">index</span></td>
+        <td><p>Zero-based index</p>
+</td>
+      </tr>
+      <tr>
+        <td><span class="xref">System.String</span></td>
+        <td><span class="parametername">owner</span></td>
+        <td><p>An owner (Harmony ID)</p>
 </td>
       </tr>
       <tr>
         <td><span class="xref">System.Int32</span></td>
         <td><span class="parametername">priority</span></td>
-        <td><p>The priority</p>
+        <td><p>The priority, see <a class="xref" href="HarmonyLib.Priority.html">Priority</a></p>
 </td>
       </tr>
       <tr>
         <td><span class="xref">System.String</span>[]</td>
         <td><span class="parametername">before</span></td>
-        <td><p>The before parameter</p>
+        <td><p>A list of Harmony IDs for patches that should run after this patch</p>
 </td>
       </tr>
       <tr>
         <td><span class="xref">System.String</span>[]</td>
         <td><span class="parametername">after</span></td>
-        <td><p>The after parameter</p>
+        <td><p>A list of Harmony IDs for patches that should run before this patch</p>
+</td>
+      </tr>
+      <tr>
+        <td><span class="xref">System.Boolean</span></td>
+        <td><span class="parametername">debug</span></td>
+        <td><p>A flag that will log the replacement method via <a class="xref" href="HarmonyLib.FileLog.html">FileLog</a> every time this patch is used to build the replacement, even in the future</p>
 </td>
       </tr>
     </tbody>
@@ -160,10 +235,10 @@
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_after.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.after%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L239">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L333">View Source</a>
   </span>
   <h4 id="HarmonyLib_Patch_after" data-uid="HarmonyLib.Patch.after">after</h4>
-  <div class="markdown level1 summary"><p>The after</p>
+  <div class="markdown level1 summary"><p>Keep this patch after the patches indicated in the list of Harmony IDs</p>
 </div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="decalaration">Declaration</h5>
@@ -190,10 +265,10 @@
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_before.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.before%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L237">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L329">View Source</a>
   </span>
   <h4 id="HarmonyLib_Patch_before" data-uid="HarmonyLib.Patch.before">before</h4>
-  <div class="markdown level1 summary"><p>The before</p>
+  <div class="markdown level1 summary"><p>Keep this patch before the patches indicated in the list of Harmony IDs</p>
 </div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="decalaration">Declaration</h5>
@@ -217,10 +292,40 @@
   </table>
   <span class="small pull-right mobile-hide">
     <span class="divider">|</span>
+    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_debug.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.debug%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L337">View Source</a>
+  </span>
+  <h4 id="HarmonyLib_Patch_debug" data-uid="HarmonyLib.Patch.debug">debug</h4>
+  <div class="markdown level1 summary"><p>A flag that will log the replacement method via <a class="xref" href="HarmonyLib.FileLog.html">FileLog</a> every time this patch is used to build the replacement, even in the future</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="decalaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly bool debug</code></pre>
+  </div>
+  <h5 class="fieldValue">Field Value</h5>
+  <table class="table table-bordered table-striped table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">System.Boolean</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_index.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.index%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L231">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L317">View Source</a>
   </span>
   <h4 id="HarmonyLib_Patch_index" data-uid="HarmonyLib.Patch.index">index</h4>
   <div class="markdown level1 summary"><p>Zero-based index</p>
@@ -250,7 +355,7 @@
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_owner.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.owner%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L233">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L321">View Source</a>
   </span>
   <h4 id="HarmonyLib_Patch_owner" data-uid="HarmonyLib.Patch.owner">owner</h4>
   <div class="markdown level1 summary"><p>The owner (Harmony ID)</p>
@@ -277,43 +382,13 @@
   </table>
   <span class="small pull-right mobile-hide">
     <span class="divider">|</span>
-    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_patch.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.patch%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
-  </span>
-  <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L242">View Source</a>
-  </span>
-  <h4 id="HarmonyLib_Patch_patch" data-uid="HarmonyLib.Patch.patch">patch</h4>
-  <div class="markdown level1 summary"><p>The patch method</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-  <h5 class="decalaration">Declaration</h5>
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public readonly MethodInfo patch</code></pre>
-  </div>
-  <h5 class="fieldValue">Field Value</h5>
-  <table class="table table-bordered table-striped table-condensed">
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><span class="xref">MethodInfo</span></td>
-        <td></td>
-      </tr>
-    </tbody>
-  </table>
-  <span class="small pull-right mobile-hide">
-    <span class="divider">|</span>
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_priority.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.priority%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L235">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L325">View Source</a>
   </span>
   <h4 id="HarmonyLib_Patch_priority" data-uid="HarmonyLib.Patch.priority">priority</h4>
-  <div class="markdown level1 summary"><p>The priority</p>
+  <div class="markdown level1 summary"><p>The priority, see <a class="xref" href="HarmonyLib.Priority.html">Priority</a></p>
 </div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="decalaration">Declaration</h5>
@@ -335,6 +410,39 @@
       </tr>
     </tbody>
   </table>
+  <h3 id="properties">Properties
+  </h3>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_PatchMethod.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.PatchMethod%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L349">View Source</a>
+  </span>
+  <a id="HarmonyLib_Patch_PatchMethod_" data-uid="HarmonyLib.Patch.PatchMethod*"></a>
+  <h4 id="HarmonyLib_Patch_PatchMethod" data-uid="HarmonyLib.Patch.PatchMethod">PatchMethod</h4>
+  <div class="markdown level1 summary"><p>The method of the static patch method</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="decalaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public MethodInfo PatchMethod { get; set; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-striped table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="xref">System.Reflection.MethodInfo</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
   <h3 id="methods">Methods
   </h3>
   <span class="small pull-right mobile-hide">
@@ -342,7 +450,7 @@
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_CompareTo_System_Object_.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.CompareTo(System.Object)%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L293">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L442">View Source</a>
   </span>
   <a id="HarmonyLib_Patch_CompareTo_" data-uid="HarmonyLib.Patch.CompareTo*"></a>
   <h4 id="HarmonyLib_Patch_CompareTo_System_Object_" data-uid="HarmonyLib.Patch.CompareTo(System.Object)">CompareTo(Object)</h4>
@@ -392,7 +500,7 @@
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_Equals_System_Object_.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.Equals(System.Object)%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L284">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L433">View Source</a>
   </span>
   <a id="HarmonyLib_Patch_Equals_" data-uid="HarmonyLib.Patch.Equals*"></a>
   <h4 id="HarmonyLib_Patch_Equals_System_Object_" data-uid="HarmonyLib.Patch.Equals(System.Object)">Equals(Object)</h4>
@@ -437,12 +545,14 @@
       </tr>
     </tbody>
   </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><span class="xref">System.Object.Equals(System.Object)</span></div>
   <span class="small pull-right mobile-hide">
     <span class="divider">|</span>
     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_GetHashCode.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.GetHashCode%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L301">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L450">View Source</a>
   </span>
   <a id="HarmonyLib_Patch_GetHashCode_" data-uid="HarmonyLib.Patch.GetHashCode*"></a>
   <h4 id="HarmonyLib_Patch_GetHashCode" data-uid="HarmonyLib.Patch.GetHashCode">GetHashCode()</h4>
@@ -469,16 +579,18 @@
       </tr>
     </tbody>
   </table>
+  <h5 class="overrides">Overrides</h5>
+  <div><span class="xref">System.Object.GetHashCode()</span></div>
   <span class="small pull-right mobile-hide">
     <span class="divider">|</span>
-    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_GetMethod_MethodBase_.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.GetMethod(MethodBase)%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
+    <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch_GetMethod_System_Reflection_MethodBase_.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch.GetMethod(System.Reflection.MethodBase)%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Improve this Doc</a>
   </span>
   <span class="small pull-right mobile-hide">
-    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L268">View Source</a>
+    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L416">View Source</a>
   </span>
   <a id="HarmonyLib_Patch_GetMethod_" data-uid="HarmonyLib.Patch.GetMethod*"></a>
-  <h4 id="HarmonyLib_Patch_GetMethod_MethodBase_" data-uid="HarmonyLib.Patch.GetMethod(MethodBase)">GetMethod(MethodBase)</h4>
-  <div class="markdown level1 summary"><p>Gets the patch method</p>
+  <h4 id="HarmonyLib_Patch_GetMethod_System_Reflection_MethodBase_" data-uid="HarmonyLib.Patch.GetMethod(System.Reflection.MethodBase)">GetMethod(MethodBase)</h4>
+  <div class="markdown level1 summary"><p>Get the patch method or a DynamicMethod if original patch method is a patch factory</p>
 </div>
   <div class="markdown level1 conceptual"></div>
   <h5 class="decalaration">Declaration</h5>
@@ -496,9 +608,9 @@
     </thead>
     <tbody>
       <tr>
-        <td><span class="xref">MethodBase</span></td>
+        <td><span class="xref">System.Reflection.MethodBase</span></td>
         <td><span class="parametername">original</span></td>
-        <td><p>The original method</p>
+        <td><p>The original method/constructor</p>
 </td>
       </tr>
     </tbody>
@@ -513,12 +625,16 @@
     </thead>
     <tbody>
       <tr>
-        <td><span class="xref">MethodInfo</span></td>
-        <td><p>The patch method</p>
+        <td><span class="xref">System.Reflection.MethodInfo</span></td>
+        <td><p>The method of the patch</p>
 </td>
       </tr>
     </tbody>
   </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <span class="xref">System.IComparable</span>
+  </div>
 </article>
           </div>
           
@@ -530,12 +646,13 @@
                     <a href="https://github.com/pardeike/Harmony/new/master/apiSpec/new?filename=HarmonyLib_Patch.md&amp;value=---%0Auid%3A%20HarmonyLib.Patch%0Asummary%3A%20'*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax'%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A" class="contribution-link">Improve this Doc</a>
                   </li>
                   <li>
-                    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L227" class="contribution-link">View Source</a>
+                    <a href="https://github.com/pardeike/Harmony/blob/master/Harmony/Public/Patch.cs/#L312" class="contribution-link">View Source</a>
                   </li>
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
-              <!-- <p><a class="back-to-top" href="#top">Back to top</a><p> -->
+                <h5>In This Article</h5>
+                <div></div>
               </nav>
             </div>
           </div>

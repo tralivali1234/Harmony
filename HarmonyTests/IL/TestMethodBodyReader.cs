@@ -1,23 +1,49 @@
-using System.Collections;
-using System.Reflection;
-using System.Reflection.Emit;
 using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
+using System;
+using System.Collections;
+using System.Reflection;
+using System.Reflection.Emit;
 
 namespace HarmonyLibTests.IL
 {
-	[TestFixture]
-	public class TestMethodBodyReader
+	[TestFixture, NonParallelizable]
+	public class TestMethodBodyReader : TestLogger
 	{
+		public static void WeirdMethodWithGoto()
+		{
+			LABEL:
+			try
+			{
+				for (; ; )
+				{
+				}
+			}
+			catch (Exception)
+			{
+				goto LABEL;
+			}
+		}
+
 		[Test]
-		public void CanGetInstructionsWithNoILGenerator()
+		public void Test_Read_WeirdMethodWithGoto()
+		{
+			var method = SymbolExtensions.GetMethodInfo(() => WeirdMethodWithGoto());
+			Assert.NotNull(method);
+			var instructions = PatchProcessor.GetOriginalInstructions(method);
+			Assert.NotNull(instructions);
+			Assert.Greater(instructions.Count, 0);
+		}
+
+		[Test]
+		public void Test_CanGetInstructionsWithNoILGenerator()
 		{
 			var method = typeof(Class12).GetMethod(nameof(Class12.FizzBuzz));
-			var instrsNoGen = MethodBodyReader.GetInstructions(generator: null, method);
+			var newGenerator = PatchProcessor.CreateILGenerator(method);
 
-			var dynamicMethod = DynamicTools.CreateDynamicMethod(method, "_Patch");
-			var instrsHasGen = MethodBodyReader.GetInstructions(dynamicMethod.GetILGenerator(), method);
+			var instrsNoGen = MethodBodyReader.GetInstructions(generator: null, method);
+			var instrsHasGen = MethodBodyReader.GetInstructions(newGenerator, method);
 
 			Assert.AreEqual(instrsNoGen.Count, instrsHasGen.Count);
 			for (var i = 0; i < instrsNoGen.Count; i++)
@@ -29,13 +55,17 @@ namespace HarmonyLibTests.IL
 				AssertAreEqual(instrNoGen.operand, instrHasGen.operand, "operand", i, instrNoGen);
 				CollectionAssert.AreEqual(instrNoGen.labels, instrHasGen.labels, "labels @ {0}", i);
 				CollectionAssert.AreEqual(instrNoGen.blocks, instrHasGen.blocks, "blocks @ {0}", i);
-				AssertAreEqual(instrNoGen.operand, instrHasGen.operand, "argument", i, instrNoGen);
+				AssertAreEqual(instrNoGen.argument, instrHasGen.argument, "argument", i, instrNoGen);
 
 				// The only difference between w/o gen and w/ gen is this:
 				var operandType = instrNoGen.opcode.OperandType;
-				if ((operandType == OperandType.ShortInlineVar || operandType == OperandType.InlineVar) && !(instrNoGen.argument is null))
+				if ((operandType == OperandType.ShortInlineVar || operandType == OperandType.InlineVar) && instrNoGen.argument is not null)
 				{
-					Assert.AreEqual(typeof(LocalVariableInfo), instrNoGen.argument.GetType(), "w/o generator argument type @ {0} ({1})", i, instrNoGen);
+#if NETCOREAPP || NET5_0_OR_GREATER
+					Assert.AreEqual("System.Reflection.RuntimeLocalVariableInfo", instrNoGen.argument.GetType().FullName, "w/o generator argument type @ {0} ({1})", i, instrNoGen);
+#else
+					Assert.AreEqual("System.Reflection.LocalVariableInfo", instrNoGen.argument.GetType().FullName, "w/o generator argument type @ {0} ({1})", i, instrNoGen);
+#endif
 					Assert.AreEqual(typeof(LocalBuilder), instrHasGen.argument.GetType(), "w/ generator argument type @ {0} ({1})", i, instrNoGen);
 				}
 			}
@@ -62,7 +92,10 @@ namespace HarmonyLibTests.IL
 
 		struct ILInstructionOffsetComparer : IComparer
 		{
-			public int Compare(object x, object y) => ((ILInstruction)x).offset.CompareTo(((ILInstruction)y).offset);
+			public int Compare(object x, object y)
+			{
+				return ((ILInstruction)x).offset.CompareTo(((ILInstruction)y).offset);
+			}
 		}
 	}
 }

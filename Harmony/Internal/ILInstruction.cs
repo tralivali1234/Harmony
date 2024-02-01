@@ -11,8 +11,8 @@ namespace HarmonyLib
 		internal object operand;
 		internal object argument;
 
-		internal List<Label> labels = new List<Label>();
-		internal List<ExceptionBlock> blocks = new List<ExceptionBlock>();
+		internal List<Label> labels = [];
+		internal List<ExceptionBlock> blocks = [];
 
 		internal ILInstruction(OpCode opcode, object operand = null)
 		{
@@ -77,9 +77,9 @@ namespace HarmonyLib
 			var instruction = "";
 
 			AppendLabel(ref instruction, this);
-			instruction = instruction + ": " + opcode.Name;
+			instruction += $": {opcode.Name}";
 
-			if (operand == null)
+			if (operand is null)
 				return instruction;
 
 			instruction += " ";
@@ -103,7 +103,7 @@ namespace HarmonyLib
 					break;
 
 				case OperandType.InlineString:
-					instruction = instruction + "\"" + operand + "\"";
+					instruction += $"\"{operand}\"";
 					break;
 
 				default:
@@ -117,10 +117,7 @@ namespace HarmonyLib
 		static void AppendLabel(ref string str, object argument)
 		{
 			var instruction = argument as ILInstruction;
-			if (instruction != null)
-				str = str + "IL_" + instruction.offset.ToString("X4");
-			else
-				str = str + "IL_" + argument;
+			str += $"IL_{instruction?.offset.ToString("X4") ?? argument}";
 		}
 	}
 }

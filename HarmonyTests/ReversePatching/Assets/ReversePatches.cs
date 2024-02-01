@@ -34,14 +34,15 @@ namespace HarmonyLibTests.Assets
 					item => item.opcode == OpCodes.Ldarg_1,
 					item => item.opcode = OpCodes.Ldarg_0
 				).ToList();
-				var mJoin = SymbolExtensions.GetMethodInfo(() => string.Join(null, null));
+				var mJoin = AccessTools.Method(typeof(string), nameof(string.Join), new[] { typeof(string), typeof(string[]) });
 				var idx = list.FindIndex(item => item.opcode == OpCodes.Call && item.operand as MethodInfo == mJoin);
 				list.RemoveRange(idx + 1, list.Count - (idx + 1));
+				list.Add(new CodeInstruction(OpCodes.Ret));
 				return list.AsEnumerable();
 			}
 
 			// make compiler happy
-			Transpiler(null);
+			_ = Transpiler(null);
 			return original;
 		}
 
@@ -74,6 +75,11 @@ namespace HarmonyLibTests.Assets
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static string GetExtra(int n)
 		{
+			// this will be replaced by reverse patching
+
+			// using a fake while loop to force non-inlining
+			while (DateTime.Now.Ticks > 0)
+				throw new NotImplementedException();
 			return null;
 		}
 
@@ -83,6 +89,27 @@ namespace HarmonyLibTests.Assets
 
 			__result = "Prefixed" + GetExtra(n) + original;
 			return false;
+		}
+	}
+
+	[HarmonyPatch]
+	public class Class1ReversePatchWithTargetMethod
+	{
+		public static MethodBase TargetMethod()
+		{
+			return AccessTools.Method(typeof(Class1Reverse), "GetExtra");
+		}
+
+		[HarmonyReversePatch]
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static string GetExtra(int n)
+		{
+			// this will be replaced by reverse patching
+
+			// using a fake while loop to force non-inlining
+			while (DateTime.Now.Ticks > 0)
+				throw new NotImplementedException();
+			return null;
 		}
 	}
 }

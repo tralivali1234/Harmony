@@ -1,6 +1,9 @@
 using HarmonyLib;
+using MonoMod.Utils.Cil;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -26,13 +29,16 @@ namespace HarmonyLibTests.Assets
 
 	public class Class1
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static void Method1()
 		{
-			Class1Patch.originalExecuted = true;
-			// some useless work to prevent inlining when testing Release builds
-			for (var i = 0; i < "abcd".Length; i++)
-				if (i > 4)
-					Console.WriteLine("");
+			try
+			{
+				Class1Patch.originalExecuted = true;
+			}
+			finally
+			{
+			}
 		}
 	}
 
@@ -73,13 +79,16 @@ namespace HarmonyLibTests.Assets
 
 	public class Class2
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void Method2()
 		{
-			Class2Patch.originalExecuted = true;
-			// some useless work to prevent inlining when testing Release builds
-			for (var i = 0; i < "abcd".Length; i++)
-				if (i > 4)
-					Console.WriteLine("");
+			try
+			{
+				Class2Patch.originalExecuted = true;
+			}
+			finally
+			{
+			}
 		}
 	}
 
@@ -143,18 +152,17 @@ namespace HarmonyLibTests.Assets
 			}
 			log += ",end";
 			return;
-		ending:
+			ending:
 			log += ",fail";
 		}
 	}
 
 	public class Class4
 	{
-#pragma warning disable IDE0060
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void Method4(object sender)
-#pragma warning restore IDE0060
 		{
-			Console.WriteLine("In Class4.Method4");
+			_ = DateTime.Now;
 			Class4Patch.originalExecuted = true;
 		}
 	}
@@ -165,11 +173,8 @@ namespace HarmonyLibTests.Assets
 		public static object senderValue = null;
 		public static bool originalExecuted = false;
 
-#pragma warning disable IDE0060
 		public static bool Prefix(Class4 __instance, object sender)
-#pragma warning restore IDE0060
 		{
-			Console.Write("In Class4Patch.Prefix");
 			prefixed = true;
 			senderValue = sender;
 			return true;
@@ -185,11 +190,10 @@ namespace HarmonyLibTests.Assets
 
 	public class Class5
 	{
-#pragma warning disable IDE0060
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void Method5(object xxxyyy)
-#pragma warning restore IDE0060
 		{
-			Console.WriteLine("In Class5.Method5");
+			_ = DateTime.Now;
 		}
 	}
 
@@ -199,21 +203,15 @@ namespace HarmonyLibTests.Assets
 		public static bool postfixed = false;
 
 		[HarmonyArgument("xxxyyy", "bar")]
-#pragma warning disable IDE0060
 		public static void Prefix(object bar)
-#pragma warning restore IDE0060
 		{
-			Console.Write("In Class5Patch.Prefix");
 			prefixed = true;
 		}
 
 		public static void Postfix(
-#pragma warning disable IDE0060
 			[HarmonyArgument("xxxyyy")] object bar
-#pragma warning restore IDE0060
 		)
 		{
-			Console.Write("In Class5Patch.Prefix");
 			postfixed = true;
 		}
 
@@ -237,10 +235,11 @@ namespace HarmonyLibTests.Assets
 		public string someString;
 		public Class6Struct someStruct;
 
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public List<object> Method6()
 		{
-			Console.WriteLine("In Class6.Method6");
-			return new List<object>() { someFloat, someString, someStruct };
+			_ = DateTime.Now;
+			return [someFloat, someString, someStruct];
 		}
 	}
 
@@ -248,7 +247,6 @@ namespace HarmonyLibTests.Assets
 	{
 		public static void Prefix(ref float ___someFloat, ref string ___someString, ref Class6Struct ___someStruct)
 		{
-			Console.Write("In Class6Patch.Prefix");
 			___someFloat = 123;
 			___someString = "patched";
 			___someStruct = new Class6Struct()
@@ -269,11 +267,10 @@ namespace HarmonyLibTests.Assets
 	public class Class7
 	{
 		public object state1 = "-";
-		public static object state2;
 
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public TestStruct Method7(string test)
 		{
-			Console.WriteLine("Method7: " + test);
 			state1 = test;
 			return new TestStruct() { a = 333, b = 666 };
 		}
@@ -283,7 +280,6 @@ namespace HarmonyLibTests.Assets
 	{
 		public static void Postfix(ref TestStruct __result)
 		{
-			Console.WriteLine("Class8Patch Postfix");
 			__result = new TestStruct() { a = 10, b = 20 };
 		}
 
@@ -291,7 +287,7 @@ namespace HarmonyLibTests.Assets
 		public static IEnumerable<CodeInstruction> Transpiler(ILGenerator il, IEnumerable<CodeInstruction> instructions)
 		{
 			var f_state1 = typeof(Class7).GetField("state1");
-			if (f_state1 == null) throw new NullReferenceException();
+			if (f_state1 is null) throw new NullReferenceException();
 
 			var f_a = typeof(TestStruct).GetField("a");
 			var f_b = typeof(TestStruct).GetField("b");
@@ -341,9 +337,9 @@ namespace HarmonyLibTests.Assets
 	{
 		public static bool mainRun = false;
 
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static TestStruct Method8(string test)
 		{
-			Console.WriteLine("Method8: " + test);
 			mainRun = true;
 			return new TestStruct() { a = 1, b = 2 };
 		}
@@ -353,7 +349,6 @@ namespace HarmonyLibTests.Assets
 	{
 		public static void Postfix(ref TestStruct __result)
 		{
-			Console.WriteLine("Class8Patch Postfix");
 			__result = new TestStruct() { a = 10, b = 20 };
 		}
 	}
@@ -373,11 +368,8 @@ namespace HarmonyLibTests.Assets
 			__state = null;
 		}
 
-#pragma warning disable IDE0060
 		public static void Postfix(object __state)
-#pragma warning restore IDE0060
 		{
-
 		}
 	}
 
@@ -422,7 +414,7 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
-	public struct Struct2
+	public struct Struct2NoRef
 	{
 		public string s;
 
@@ -433,19 +425,84 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
-	public class Struct2Patch
+	public class Struct2NoRefObjectPatch
 	{
-		public static void Postfix(ref Struct2 __instance)
+		public static string s;
+
+		public static void Postfix(Struct2NoRef __instance)
+		{
+			s = __instance.s;
+		}
+	}
+
+	public struct Struct2Ref
+	{
+		public string s;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void TestMethod(string val)
+		{
+			s = val;
+		}
+	}
+
+	public class Struct2RefPatch
+	{
+		public static void Postfix(ref Struct2Ref __instance)
 		{
 			__instance.s = "patched";
 		}
 	}
 
+	public struct Struct3NoRefObject
+	{
+		public string s;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void TestMethod(string val)
+		{
+			s = val;
+		}
+	}
+
+	public class Struct3NoRefObjectPatch
+	{
+		public static string s;
+
+		public static void Postfix(object __instance)
+		{
+			var str = (Struct3NoRefObject)__instance;
+			s = str.s;
+		}
+	}
+
+	public struct Struct3RefObject
+	{
+		public string s;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void TestMethod(string val)
+		{
+			s = val;
+		}
+	}
+
+	public class Struct3RefObjectPatch
+	{
+		public static void Postfix(ref object __instance)
+		{
+			var str = (Struct3RefObject)__instance;
+			str.s = "patched";
+			__instance = str;
+		}
+	}
+
 	public class AttributesClass
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void Method(string foo)
 		{
-			Console.WriteLine("foo=" + foo);
+			_ = DateTime.Now;
 		}
 	}
 
@@ -466,14 +523,12 @@ namespace HarmonyLibTests.Assets
 		[HarmonyPrefix]
 		public static void Patch1()
 		{
-			Console.WriteLine("prefix");
 			prefixed = true;
 		}
 
 		[HarmonyPostfix]
 		public static void Patch2()
 		{
-			Console.WriteLine("postfix");
 			postfixed = true;
 		}
 
@@ -490,7 +545,7 @@ namespace HarmonyLibTests.Assets
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public bool Method10()
 		{
-			Console.WriteLine("Method10");
+			_ = DateTime.Now;
 			return true;
 		}
 	}
@@ -502,7 +557,6 @@ namespace HarmonyLibTests.Assets
 
 		public static void Postfix(bool __result)
 		{
-			Console.WriteLine("Method10 Patch result: " + __result);
 			originalResult = __result;
 			postfixed = true;
 		}
@@ -524,32 +578,32 @@ namespace HarmonyLibTests.Assets
 	{
 		public static bool prefixed = false;
 
-		public static DynamicMethod Prefix(MethodBase method)
+		public static MethodInfo Prefix(MethodBase method)
 		{
-			var dynamicMethod = new DynamicMethod(method.Name + "_Class11Patch_Prefix",
+			return PatchTools.CreateMethod(
+				$"{method.Name}_Class11Patch_Prefix",
 				typeof(bool),
-				new[] { typeof(string).MakeByRefType(), typeof(int) });
+				[
+					new KeyValuePair<string, Type>("__result", typeof(string).MakeByRefType()),
+					new KeyValuePair<string, Type>("dummy", typeof(int))
+				],
+				il =>
+				{
+					//load "patched" into __result
+					il.Emit(OpCodes.Ldarg_0);
+					il.Emit(OpCodes.Ldstr, "patched");
+					il.Emit(OpCodes.Stind_Ref);
 
-			dynamicMethod.DefineParameter(1, ParameterAttributes.None, "__result");
-			dynamicMethod.DefineParameter(2, ParameterAttributes.None, "dummy");
+					//set prefixed to true
+					il.Emit(OpCodes.Ldnull);
+					il.Emit(OpCodes.Ldc_I4_1);
+					il.Emit(OpCodes.Stfld, typeof(Class11Patch).GetField(nameof(prefixed)));
 
-			var il = dynamicMethod.GetILGenerator();
-
-			//load "patched" into __result
-			il.Emit(OpCodes.Ldarg_0);
-			il.Emit(OpCodes.Ldstr, "patched");
-			il.Emit(OpCodes.Stind_Ref);
-
-			//set prefixed to true
-			il.Emit(OpCodes.Ldnull);
-			il.Emit(OpCodes.Ldc_I4_1);
-			il.Emit(OpCodes.Stfld, typeof(Class11Patch).GetField(nameof(prefixed)));
-
-			//return false
-			il.Emit(OpCodes.Ldc_I4_0);
-			il.Emit(OpCodes.Ret);
-
-			return dynamicMethod;
+					//return false
+					il.Emit(OpCodes.Ldc_I4_0);
+					il.Emit(OpCodes.Ret);
+				}
+			);
 		}
 	}
 
@@ -557,7 +611,10 @@ namespace HarmonyLibTests.Assets
 	{
 		readonly int count;
 
-		public Class12(int count) => this.count = count;
+		public Class12(int count)
+		{
+			this.count = count;
+		}
 
 		public List<string> FizzBuzz()
 		{
@@ -577,17 +634,821 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
-	// disabled - see test case
-	/*
-	public class ClassExceptionFilter
+	public class Class13<T> : IEnumerable<T>
+	{
+		readonly List<T> store = [];
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void Add(T item)
+		{
+			store.Add(item);
+		}
+
+		public IEnumerator<T> GetEnumerator()
+		{
+			return store.GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return store.GetEnumerator();
+		}
+	}
+
+	public class Class13Patch
+	{
+		public static object method = null;
+		public static int result = 0;
+
+		public static void Prefix(object __originalMethod, ref int item)
+		{
+			method = __originalMethod;
+			result = item;
+			item = 999;
+		}
+	}
+
+	public class Class14
+	{
+		public static List<string> state = [];
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public bool Test(string s, KeyValuePair<string, int> p)
+		{
+			state.Add(s);
+			try { return true; }
+			finally { }
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public bool Test(string s, KeyValuePair<string, int> p1, KeyValuePair<string, int> p2)
+		{
+			state.Add(s);
+			try { return true; }
+			finally { }
+		}
+	}
+
+	[HarmonyPatch]
+	public static class Class14Patch
+	{
+		[HarmonyPatch(typeof(Class14), "Test", new Type[] { typeof(string), typeof(KeyValuePair<string, int>) })]
+		[HarmonyPrefix]
+		static bool Prefix0()
+		{
+			Class14.state.Add("Prefix0");
+			return true;
+		}
+		[HarmonyPatch(typeof(Class14), "Test", new Type[] { typeof(string), typeof(KeyValuePair<string, int>) })]
+		[HarmonyPostfix]
+		static void Postfix0()
+		{
+			Class14.state.Add("Postfix0");
+		}
+
+		[HarmonyPatch(typeof(Class14), "Test", new Type[] { typeof(string), typeof(KeyValuePair<string, int>), typeof(KeyValuePair<string, int>) })]
+		[HarmonyPrefix]
+		static bool Prefix1()
+		{
+			Class14.state.Add("Prefix1");
+			return true;
+		}
+		[HarmonyPatch(typeof(Class14), "Test", new Type[] { typeof(string), typeof(KeyValuePair<string, int>), typeof(KeyValuePair<string, int>) })]
+		[HarmonyPostfix]
+		static void Postfix1()
+		{
+			Class14.state.Add("Postfix1");
+		}
+	}
+
+	[HarmonyPatch]
+	public static class Class15Patch
+	{
+		static MethodBase TargetMethod()
+		{
+			return null;
+		}
+
+		static void Postfix()
+		{
+		}
+	}
+
+	[HarmonyPatch]
+	public static class Class16Patch
+	{
+		static string TargetMethod()
+		{
+			return null;
+		}
+
+		static void Postfix()
+		{
+		}
+	}
+
+	[HarmonyPatch]
+	public static class Class17Patch
+	{
+		static IEnumerable<MethodBase> TargetMethods()
+		{
+			yield return AccessTools.Method(typeof(Class16Patch), "TargetMethods");
+			yield return AccessTools.Method(typeof(Class16Patch), "Dummy");
+			yield return AccessTools.Method(typeof(Class16Patch), "Postfix");
+		}
+
+		static void Postfix()
+		{
+		}
+	}
+
+	public class MultiplePatches1
+	{
+		public static string result;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public string TestMethod(string val)
+		{
+			result = val;
+			return "ok";
+		}
+	}
+
+	public class MultiplePatches2
+	{
+		public static string result;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public string TestMethod(string val)
+		{
+			result = val;
+			return "ok";
+		}
+	}
+
+	[HarmonyPatch]
+	public class MultiplePatches1Patch
+	{
+		[HarmonyPatch(typeof(MultiplePatches1), "TestMethod")]
+		[HarmonyPrefix]
+		public static void Fix1(ref string val)
+		{
+			val += ",prefix1";
+		}
+
+		[HarmonyPatch(typeof(MultiplePatches1), "TestMethod")]
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.High)]
+		public static void Fix2(ref string val)
+		{
+			val += ",prefix2";
+		}
+
+		[HarmonyPatch(typeof(MultiplePatches1), "TestMethod")]
+		[HarmonyPostfix]
+		public static void Fix3(ref string __result)
+		{
+			__result += ",postfix";
+		}
+	}
+
+	[HarmonyPatch(typeof(MultiplePatches2), "TestMethod")]
+	public class MultiplePatchesPatch2_Part1
+	{
+		[HarmonyPriority(Priority.Low)]
+		public static void Prefix(ref string val)
+		{
+			val += ",prefix1";
+		}
+	}
+
+	[HarmonyPatch(typeof(MultiplePatches2), "TestMethod")]
+	public class MultiplePatchesPatch2_Part2
+	{
+		public static void Prefix(ref string val)
+		{
+			val += ",prefix2";
+		}
+	}
+
+	[HarmonyPatch(typeof(MultiplePatches2), "TestMethod")]
+	public class MultiplePatchesPatch2_Part3
+	{
+		public static void Postfix(ref string __result)
+		{
+			__result = "patched";
+		}
+	}
+
+	public class InjectFieldBase
+	{
+		internal string testField;
+	}
+
+	public class InjectFieldSubClass : InjectFieldBase
+	{
+		public string TestValue => testField;
+
+		public void Method(string val)
+		{
+			try
+			{
+				testField = val;
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(InjectFieldSubClass), nameof(InjectFieldSubClass.Method))]
+	public class InjectFieldSubClass_Patch
+	{
+		public static void Postfix(ref string ___testField)
+		{
+			___testField = "patched";
+		}
+	}
+
+	public class Finalizer_Patch_Order_Class
 	{
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public static int Method(Exception exception)
+		public IEnumerable<int> Method()
+		{
+			yield return 1;
+			yield return 2;
+			yield return 3;
+		}
+	}
+
+	[HarmonyPatch(typeof(Finalizer_Patch_Order_Class))]
+	[HarmonyPatch(nameof(Finalizer_Patch_Order_Class.Method))]
+	public class Finalizer_Patch_Order_Patch
+	{
+		public static List<string> events = [];
+
+		public static List<string> GetEvents()
+		{
+			return events;
+		}
+
+		public static void ResetTest()
+		{
+			events = [];
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(200)]
+		public static bool Bool_Prefix()
+		{
+			events.Add(nameof(Bool_Prefix));
+			return true;
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(100)]
+		public static void Void_Prefix()
+		{
+			events.Add(nameof(Void_Prefix));
+		}
+
+		[HarmonyPostfix]
+		[HarmonyPriority(200)]
+		public static void Simple_Postfix()
+		{
+			events.Add(nameof(Simple_Postfix));
+		}
+
+		[HarmonyPostfix]
+		[HarmonyPriority(200)]
+		public static IEnumerable<int> Passthrough_Postfix1(IEnumerable<int> items)
+		{
+			events.Add($"{nameof(Passthrough_Postfix1)} start");
+			var e = items.GetEnumerator();
+			while (e.MoveNext())
+			{
+				var oldValue = e.Current;
+				var newValue = oldValue * 10;
+				events.Add($"Yield {newValue} [old={oldValue}]");
+				yield return newValue;
+			}
+			events.Add($"{nameof(Passthrough_Postfix1)} end");
+		}
+
+		[HarmonyPostfix]
+		[HarmonyPriority(100)]
+		public static IEnumerable<int> Passthrough_Postfix2(IEnumerable<int> items)
+		{
+			events.Add($"{nameof(Passthrough_Postfix2)} start");
+			var e = items.GetEnumerator();
+			while (e.MoveNext())
+			{
+				var oldValue = e.Current;
+				var newValue = oldValue + 1;
+				events.Add($"Yield {newValue} [old={oldValue}]");
+				yield return newValue;
+			}
+			events.Add($"{nameof(Passthrough_Postfix2)} end");
+		}
+
+		[HarmonyFinalizer]
+		[HarmonyPriority(300)]
+		public static Exception NonModifying_Finalizer(Exception __exception)
+		{
+			events.Add(nameof(NonModifying_Finalizer));
+			return __exception;
+		}
+
+		[HarmonyFinalizer]
+		[HarmonyPriority(200)]
+		public static Exception ClearException_Finalizer()
+		{
+			events.Add(nameof(ClearException_Finalizer));
+			return null;
+		}
+
+		[HarmonyFinalizer]
+		[HarmonyPriority(100)]
+		public static void Void_Finalizer(Exception __exception)
+		{
+			events.Add(nameof(Void_Finalizer));
+		}
+	}
+
+	public class Affecting_Original_Prefixes_Class
+	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public string Method(int n)
+		{
+			return $"{n}";
+		}
+	}
+
+	[HarmonyPatch(typeof(Affecting_Original_Prefixes_Class))]
+	[HarmonyPatch(nameof(Affecting_Original_Prefixes_Class.Method))]
+	public class Affecting_Original_Prefixes_Patch
+	{
+		public static List<string> events = [];
+
+		public static List<string> GetEvents()
+		{
+			return events;
+		}
+
+		public static void ResetTest()
+		{
+			events = [];
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(500)]
+		public static bool Prefix1(ref string __result)
+		{
+			events.Add(nameof(Prefix1));
+			__result = "patched";
+			return true;
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(400)]
+		public static void Prefix2()
+		{
+			events.Add(nameof(Prefix2));
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(300)]
+		public static bool Prefix3()
+		{
+			events.Add(nameof(Prefix3));
+			return false;
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(200)]
+		public static void Prefix4(ref string __result)
+		{
+			events.Add(nameof(Prefix4));
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(100)]
+		public static void Prefix5()
+		{
+			events.Add(nameof(Prefix5));
+		}
+	}
+
+	public static class LazyTranspilerRunsOnce_Class
+	{
+		public static int counter = 0;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static void Method()
+		{
+		}
+	}
+
+	public struct UnityColor
+	{
+		public float r;
+		public float g;
+		public float b;
+		public float a;
+	}
+
+	public class APIUser
+	{
+	}
+
+	public class Class18
+	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static UnityColor GetDefaultNameplateColor(APIUser user)
+		{
+			return new UnityColor() { r = 0, g = 0, b = 0, a = 0 };
+		}
+	}
+
+	[HarmonyPatch(typeof(Class18))]
+	[HarmonyPatch(nameof(Class18.GetDefaultNameplateColor))]
+	public static class Class18Patch
+	{
+		public static bool prefixExecuted = false;
+
+		public static bool Prefix(APIUser __0, ref UnityColor __result)
+		{
+			_ = __0;
+			prefixExecuted = true;
+			__result = new UnityColor() { r = 1, g = 1, b = 1, a = 1 };
+			return false;
+		}
+	}
+
+	public class Class19
+	{
+		static readonly string[] test = { "abc" };
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static ref string Method19()
+		{
+			return ref test[0];
+		}
+	}
+
+	[HarmonyPatch(typeof(Class19))]
+	[HarmonyPatch(nameof(Class19.Method19))]
+	public static class Class19Patch
+	{
+		public static void Postfix(ref string __result)
+		{
+			__result = "def";
+		}
+	}
+
+	public class Class20
+	{
+		public struct Struct20
+		{
+			public int value;
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static Struct20 Method20()
+		{
+			return new Struct20 { value = 123 };
+		}
+	}
+
+	[HarmonyPatch(typeof(Class20))]
+	[HarmonyPatch(nameof(Class20.Method20))]
+	public static class Class20Patch
+	{
+		public static object theResult;
+
+		public static void Postfix(object __result)
+		{
+			theResult = __result;
+		}
+	}
+
+	public class Class21
+	{
+		public struct Struct21
+		{
+			public int value;
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static Struct21 Method21()
+		{
+			return new Struct21 { value = 123 };
+		}
+	}
+
+	[HarmonyPatch(typeof(Class21))]
+	[HarmonyPatch(nameof(Class21.Method21))]
+	public static class Class21Patch
+	{
+		public static void Postfix(ref object __result)
+		{
+			__result = new Class21.Struct21 { value = 456 };
+		}
+	}
+
+	[HarmonyPatch(typeof(Class22), nameof(Method22))]
+	public class Class22
+	{
+		public static bool? bool1;
+		public static bool? bool2;
+		public static bool? bool3;
+		public static bool? bool4;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static void Method22()
+		{
+			try
+			{
+			}
+			catch
+			{
+				throw;
+			}
+		}
+
+		[HarmonyPrefix]
+		public static bool Prefix1(bool __runOriginal)
+		{
+			bool1 = __runOriginal;
+			return true;
+		}
+
+		[HarmonyPrefix]
+		public static bool Prefix2(bool __runOriginal)
+		{
+			bool2 = __runOriginal;
+			return false;
+		}
+
+		[HarmonyPrefix]
+		public static void Prefix3(bool __runOriginal)
+		{
+			bool3 = __runOriginal;
+		}
+
+		[HarmonyPostfix]
+		public static void Postfix(bool __runOriginal)
+		{
+			bool4 = __runOriginal;
+		}
+	}
+
+	[HarmonyPatch(typeof(Class22b), nameof(Method22b))]
+	public class Class22b
+	{
+		public static bool prefixResult;
+		public static bool originalExecuted;
+		public static bool? runOriginalPre;
+		public static bool? runOriginalPost;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static void Method22b()
+		{
+			originalExecuted = true;
+			try { }
+			catch { throw; }
+		}
+
+		public static bool Prefix(bool __runOriginal)
+		{
+			runOriginalPre = __runOriginal;
+			return prefixResult;
+		}
+
+		public static void Postfix(bool __runOriginal)
+		{
+			runOriginalPost = __runOriginal;
+		}
+	}
+
+	[HarmonyPatch(typeof(Class23), nameof(Method23))]
+	public class Class23
+	{
+		public static bool? bool1;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static void Method23()
+		{
+			try
+			{
+			}
+			catch
+			{
+				throw;
+			}
+		}
+
+		public static void Postfix(bool __runOriginal)
+		{
+			bool1 = __runOriginal;
+		}
+	}
+
+	[HarmonyPatch(typeof(Class24), nameof(Method24))]
+	public class Class24
+	{
+		public static bool? bool1;
+		public static bool? bool2;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static void Method24()
+		{
+			try
+			{
+			}
+			catch
+			{
+				throw;
+			}
+		}
+
+		public static void Prefix(bool __runOriginal)
+		{
+			bool1 = __runOriginal;
+		}
+
+		public static void Postfix(bool __runOriginal)
+		{
+			bool2 = __runOriginal;
+		}
+	}
+
+	public class InjectDelegateBaseClass
+	{
+		public string pre;
+		public string post;
+
+		internal virtual string SomeMethod(ref string s, int n)
+		{
+			return pre + s + ":" + n + post;
+		}
+	}
+
+	public class InjectDelegateClass : InjectDelegateBaseClass
+	{
+		public string result = "";
+
+		internal override string SomeMethod(ref string s, int n)
+		{
+			return $"[{base.SomeMethod(ref s, n)}]";
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void Method(int n)
+		{
+			var s = "test";
+			result = SomeMethod(ref s, 123);
+		}
+	}
+
+	[HarmonyPatch(typeof(InjectDelegateClass), "Method")]
+	public class InjectDelegateClassPatch
+	{
+		[HarmonyDelegate(typeof(InjectDelegateBaseClass), "SomeMethod", MethodDispatchType.Call)]
+		public delegate string TestDelegate(ref string s, int n);
+
+		[HarmonyDelegate(typeof(InjectDelegateBaseClass), "SomeMethod", MethodDispatchType.VirtualCall)]
+		public delegate string TestVirtualDelegate(ref string s, int n);
+
+		public static string result = "";
+
+		public static bool Prefix(TestDelegate baseSomeMethod, TestVirtualDelegate virtualBaseSomeMethod, ref int n)
+		{
+			n = 456;
+			var s = "patch";
+			result = baseSomeMethod(ref s, n) + " | " + virtualBaseSomeMethod(ref s, n);
+			return false;
+		}
+	}
+
+	public static class InjectDelegateStaticClass
+	{
+		internal static string SomeMethod(int n)
+		{
+			return $"[{n}]";
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static string Method(int n)
+		{
+			return SomeMethod(n + 1000);
+		}
+	}
+
+	[HarmonyPatch(typeof(InjectDelegateStaticClass), "Method")]
+	public class InjectDelegateStaticClassPatch
+	{
+		[HarmonyDelegate(typeof(InjectDelegateStaticClass), "SomeMethod")]
+		public delegate string TestDelegate(int n);
+
+		public static bool Prefix(TestDelegate someMethod, ref string __result)
+		{
+			__result = someMethod(123) + "/" + someMethod(456);
+			return false;
+		}
+	}
+
+	public struct InjectDelegateStruct
+	{
+		public string pre;
+		public string post;
+
+		internal string SomeMethod(int n)
+		{
+			return pre + n + post;
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public string Method(int n)
+		{
+			return SomeMethod(n + 1000);
+		}
+	}
+
+	[HarmonyPatch(typeof(InjectDelegateStruct), "Method")]
+	public class InjectDelegateStructPatch
+	{
+		[HarmonyDelegate(typeof(InjectDelegateStruct), "SomeMethod")]
+		public delegate string TestDelegate(int n);
+
+		public static bool Prefix(TestDelegate someMethod, ref string __result)
+		{
+			__result = someMethod(123) + "/" + someMethod(456);
+			return false;
+		}
+	}
+
+	public class BulkPatchClass
+	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public string Method1()
+		{
+			return "TEST1";
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public string Method2()
+		{
+			return "TEST2";
+		}
+	}
+
+	[HarmonyPatch(typeof(BulkPatchClass))]
+	[HarmonyPatchAll]
+	public class BulkPatchClassPatch
+	{
+		public static int transpileCount = 0;
+
+		static string Fix(string result)
+		{
+			return result + "+";
+		}
+
+		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+		{
+			transpileCount++;
+			var list = instructions.ToList();
+			if (original.IsConstructor is false)
+				list.Insert(list.Count - 1, CodeInstruction.Call(() => Fix("")));
+			return list.AsEnumerable();
+		}
+	}
+
+	public class ClassExceptionFilter
+	{
+		static bool flag = false;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static void Method1()
+		{
+			try
+			{
+				Console.WriteLine("code");
+			}
+			catch (Exception e) when (flag)
+			{
+				Console.WriteLine(e.Message);
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static int Method2(Exception exception)
 		{
 			var result = 0;
 			try
 			{
-				if (exception != null)
+				if (exception is object)
 					throw exception;
 			}
 			catch (Exception e) when (e.Message == "test")
@@ -605,5 +1466,4 @@ namespace HarmonyLibTests.Assets
 			return result;
 		}
 	}
-	*/
 }

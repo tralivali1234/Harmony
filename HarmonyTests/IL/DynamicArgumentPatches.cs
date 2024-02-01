@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 
 namespace HarmonyLibTests.IL
 {
@@ -21,9 +22,9 @@ namespace HarmonyLibTests.IL
 			this.v3 = v3;
 		}
 
-		public static Vec3 Zero => new Vec3(0, 0, 0);
+		public static Vec3 Zero => new(0, 0, 0);
 
-		override public string ToString()
+		public override string ToString()
 		{
 			return v1 + "," + v2 + "," + v3;
 		}
@@ -31,49 +32,67 @@ namespace HarmonyLibTests.IL
 
 	public static class TestMethods1
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static void Test1(out string s)
 		{
-			Console.WriteLine("Test1");
-			s = "Test1";
+			try
+			{
+				s = "Test1";
+			}
+			finally
+			{
+			}
 		}
 	}
 
 	public class TestMethods2
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public string Test2(int n, string s)
 		{
-			Console.WriteLine("Test2");
-			return s;
+			try
+			{
+				return s;
+			}
+			finally
+			{
+			}
 		}
 	}
 
 	public class TestMethods3
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static List<int> Test3(Vec3 v, List<int> list)
 		{
-			Console.WriteLine("Test3");
-			return new List<int>();
+			try
+			{
+				return [];
+			}
+			finally
+			{
+			}
 		}
 	}
 
-	[TestFixture]
-	public class DynamicArgumentPatches
+	[TestFixture, NonParallelizable]
+	public class DynamicArgumentPatches : TestLogger
 	{
-		static readonly List<string> log = new List<string>();
+		static readonly List<string> log = [];
 
 		static bool General(string typeName, int token, object instance, object[] args)
 		{
 			var method = AccessTools.TypeByName(typeName).Module.ResolveMethod(token);
 			log.Add(method.Name);
 			log.Add(instance?.GetType().Name ?? "NULL");
-			if (args != null)
+			if (args is not null)
 				foreach (var arg in args)
 					log.Add(arg?.ToString() ?? "NULL");
 			return true;
 		}
 
-		static MethodInfo m_General = SymbolExtensions.GetMethodInfo(() => General("", 0, null, new object[0]));
-		static MethodInfo m_Transpiler = SymbolExtensions.GetMethodInfo(() => Transpiler(null, null, null));
+		static readonly MethodInfo m_General = SymbolExtensions.GetMethodInfo(() => General("", 0, null, new object[0]));
+		static readonly MethodInfo m_Transpiler = SymbolExtensions.GetMethodInfo(() => Transpiler(null, null, null));
 		static IEnumerable<CodeInstruction> Transpiler(MethodBase original, IEnumerable<CodeInstruction> instructions, ILGenerator gen)
 		{
 			int idx;
@@ -124,7 +143,7 @@ namespace HarmonyLibTests.IL
 				yield return new CodeInstruction(OpCodes.Ldarg, argIndex);
 				if (pInfo.IsOut || pInfo.IsRetval)
 				{
-					if (pType.IsValueType)
+					if (pType.IsValueType && AccessTools.IsStruct(pType) is false)
 						yield return new CodeInstruction(OpCodes.Ldobj, pType);
 					else
 						yield return new CodeInstruction(OpCodes.Ldind_Ref);
@@ -175,7 +194,7 @@ namespace HarmonyLibTests.IL
 			}
 		}
 
-		static MethodInfo[] methods = new MethodInfo[]
+		static readonly MethodInfo[] methods = new MethodInfo[]
 		{
 			AccessTools.Method(typeof(TestMethods1), "Test1"),
 			SymbolExtensions.GetMethodInfo(() => new TestMethods2().Test2(0, "")),
@@ -183,18 +202,17 @@ namespace HarmonyLibTests.IL
 		};
 
 		[Test]
-		public void SendingArguments()
+		public void Test_SendingArguments()
 		{
-			//Harmony.DEBUG = true;
 			var harmony = new Harmony("test");
 			methods.Do(m =>
 			{
-				harmony.Patch(m, transpiler: new HarmonyMethod(m_Transpiler));
+				_ = harmony.Patch(m, transpiler: new HarmonyMethod(m_Transpiler));
 			});
 
 			TestMethods1.Test1(out var s);
-			new TestMethods2().Test2(123, "hello");
-			TestMethods3.Test3(new Vec3(2, 4, 6), new[] { 100, 200, 300 }.ToList());
+			_ = new TestMethods2().Test2(123, "hello");
+			_ = TestMethods3.Test3(new Vec3(2, 4, 6), new[] { 100, 200, 300 }.ToList());
 
 			var n = 0;
 			Assert.AreEqual(11, log.Count);

@@ -1,50 +1,50 @@
-using NUnit.Framework;
-using HarmonyLib;
+﻿using HarmonyLib;
 using HarmonyLibTests.Assets;
+using NUnit.Framework;
 
 namespace HarmonyLibTests.Tools
 {
-	[TestFixture]
-	public class Test_Attributes
+	[TestFixture, NonParallelizable]
+	public class Test_Attributes : TestLogger
 	{
 		[Test]
-		public void TestAttributes()
+		public void Test_SimpleAttributes()
 		{
 			var type = typeof(AllAttributesClass);
 			var infos = HarmonyMethodExtensions.GetFromType(type);
 			var info = HarmonyMethod.Merge(infos);
-			Assert.IsNotNull(info);
+			Assert.NotNull(info);
 			Assert.AreEqual(typeof(string), info.declaringType);
 			Assert.AreEqual("foobar", info.methodName);
-			Assert.IsNotNull(info.argumentTypes);
+			Assert.NotNull(info.argumentTypes);
 			Assert.AreEqual(2, info.argumentTypes.Length);
 			Assert.AreEqual(typeof(float), info.argumentTypes[0]);
 			Assert.AreEqual(typeof(string), info.argumentTypes[1]);
+			Assert.AreEqual(Priority.High, info.priority);
 		}
 
 		[Test]
-		public void TestSubClassPatching()
+		public void Test_SubClassPatching()
 		{
 			var instance1 = new Harmony("test1");
-			Assert.IsNotNull(instance1);
+			Assert.NotNull(instance1);
 			var type1 = typeof(MainClassPatch);
-			Assert.IsNotNull(type1);
-			var processor1 = instance1.ProcessorForAnnotatedClass(type1);
-			Assert.IsNotNull(processor1);
-			var dynamicMethods1 = processor1.Patch();
-			Assert.AreEqual(1, dynamicMethods1.Count);
+			Assert.NotNull(type1);
+			var processor1 = instance1.CreateClassProcessor(type1);
+			Assert.NotNull(processor1);
+			Assert.NotNull(processor1.Patch());
 
 			var instance2 = new Harmony("test2");
-			Assert.IsNotNull(instance2);
+			Assert.NotNull(instance2);
 			var type2 = typeof(SubClassPatch);
-			Assert.IsNotNull(type2);
+			Assert.NotNull(type2);
 			try
 			{
-				instance2.ProcessorForAnnotatedClass(type2);
+				_ = instance2.CreateClassProcessor(type2);
 			}
 			catch (System.ArgumentException ex)
 			{
-				Assert.IsTrue(ex.Message.Contains("No target method specified"));
+				Assert.True(ex.Message.Contains("No target method specified"));
 			}
 		}
 	}

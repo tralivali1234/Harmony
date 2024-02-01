@@ -8,7 +8,7 @@
     <title>Priorities </title>
     <meta name="viewport" content="width=device-width">
     <meta name="title" content="Priorities ">
-    <meta name="generator" content="docfx 2.42.3.0">
+    <meta name="generator" content="docfx 2.59.4.0">
     
     <link rel="shortcut icon" href="../favicon.ico">
     <link rel="stylesheet" href="../styles/docfx.vendor.css">
@@ -69,69 +69,78 @@
             <article class="content wrap" id="_content" data-uid="">
 <h1 id="priorities">Priorities</h1>
 
-<p>With Harmony, the order of patches is not linear. A plugin/mod that comes last can still execute first if necessary. For this to work, patches can be annotated with method annotations:</p>
+<p>With Harmony, the order of patches is not linear. A plugin/mod that comes last can still add patches that execute first. For this to work, patches need to be annotated with method annotations:</p>
 <ul>
-<li><p><strong>[HarmonyPriority(int)]</strong><br>
+<li><p><strong>[HarmonyPriority(int)]</strong>
 Sets the priority of this Prefix/Postfix. Defaults to Priority.Normal (400)</p>
 </li>
-<li><p><strong>[HarmonyBefore(string[])]</strong><br>
+<li><p><strong>[HarmonyBefore(string[])]</strong>
 Indicates that this Prefix/Postfix should be executed before any of the ID's given</p>
 </li>
-<li><p><strong>[HarmonyAfter(string[])]</strong><br>
+<li><p><strong>[HarmonyAfter(string[])]</strong>
 Indicates that this Prefix/Postfix should be executed after any of the ID's given</p>
 </li>
 </ul>
 <p>Example:</p>
 <p>Given the following method:</p>
-<pre><code class="lang-csharp">class Foo
+<pre><code class="lang-csharp" name="example">class Foo
 {
-	static string Bar()
-	{
-		return &quot;secret&quot;;
-	}
+    static string Bar()
+    {
+        return &quot;secret&quot;;
+    }
 }
 </code></pre>
 <p>and <strong>Plugin 1</strong></p>
-<pre><code class="lang-csharp">var harmony = HarmonyInstance.Create(&quot;net.example.plugin1&quot;);
-harmony.PatchAll(Assembly.GetExecutingAssembly());
+<pre><code class="lang-csharp" name="example">void Main_Plugin1()
+{
+    var harmony = new Harmony(&quot;net.example.plugin1&quot;);
+    harmony.PatchAll(Assembly.GetExecutingAssembly());
+}
 
 [HarmonyPatch(typeof(Foo))]
 [HarmonyPatch(&quot;Bar&quot;)]
 class MyPatch
 {
-	static void Postfix(ref result)
-	{
-		result = &quot;new secret 1&quot;;
-	}
+    static void Postfix(ref string result)
+    {
+        result = &quot;new secret 1&quot;;
+    }
 }
 </code></pre>
 <p>and <strong>Plugin 2</strong></p>
-<pre><code class="lang-csharp">var harmony = HarmonyInstance.Create(&quot;net.example.plugin2&quot;);
-harmony.PatchAll(Assembly.GetExecutingAssembly());
+<pre><code class="lang-csharp" name="example">void Main_Plugin2()
+{
+    var harmony = new Harmony(&quot;net.example.plugin2&quot;);
+    harmony.PatchAll(Assembly.GetExecutingAssembly());
+}
 
 [HarmonyPatch(typeof(Foo))]
 [HarmonyPatch(&quot;Bar&quot;)]
 class MyPatch
 {
-	static void Postfix(ref result)
-	{
-		result = &quot;new secret 2&quot;;
-	}
+    static void Postfix(ref string result)
+    {
+        result = &quot;new secret 2&quot;;
+    }
 }
 </code></pre>
 <p>a call to <code>Foo.Bar()</code> would return &quot;new secret 2&quot; because both plugins register their Postfix with the same priority and so the second Postfix overrides the result of the first one. As an author of Plugin 1, you could rewrite your code to</p>
-<pre><code class="lang-csharp">var harmony = HarmonyInstance.Create(&quot;net.example.plugin1&quot;);
-harmony.PatchAll(Assembly.GetExecutingAssembly());
+<pre><code class="lang-csharp" name="example">void Main_Plugin1b()
+{
+    var harmony = new Harmony(&quot;net.example.plugin1&quot;);
+    harmony.PatchAll(Assembly.GetExecutingAssembly());
+}
 
 [HarmonyPatch(typeof(Foo))]
 [HarmonyPatch(&quot;Bar&quot;)]
 class MyPatch
 {
-	[HarmonyAfter(new string[] { &quot;net.example.plugin2&quot; })]
-	static void Postfix(ref result)
-	{
-		result = &quot;new secret 1&quot;;
-	}
+    [HarmonyAfter(new string[] { &quot;net.example.plugin2&quot; })]
+    static void Postfix(ref string result)
+    {
+        result = &quot;new secret 1&quot;;
+    }
 }
 </code></pre>
 <p>and would be executed after net.example.plugin2 which gives you (for a Postfix) the chance to change the result last. Alternatively, you could annotate with [HarmonyPriority(Priority.Low)] to come after plugin1.</p>
@@ -149,7 +158,8 @@ class MyPatch
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
-              <!-- <p><a class="back-to-top" href="#top">Back to top</a><p> -->
+                <h5>In This Article</h5>
+                <div></div>
               </nav>
             </div>
           </div>

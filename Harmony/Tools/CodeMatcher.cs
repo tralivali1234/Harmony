@@ -6,125 +6,31 @@ using System.Reflection.Emit;
 
 namespace HarmonyLib
 {
-	/// <summary>A CodeInstruction match</summary>
-	public class CodeMatch
-	{
-		/// <summary>The name of the match</summary>
-		public string name;
-
-		/// <summary>The matched opcodes</summary>
-		public List<OpCode> opcodes = new List<OpCode>();
-		/// <summary>The matched operands</summary>
-		public List<object> operands = new List<object>();
-		/// <summary>The matched labels</summary>
-		public List<Label> labels = new List<Label>();
-		/// <summary>The matched blocks</summary>
-		public List<ExceptionBlock> blocks = new List<ExceptionBlock>();
-
-		/// <summary>The jumps from the match</summary>
-		public List<int> jumpsFrom = new List<int>();
-		/// <summary>The jumps to the match</summary>
-		public List<int> jumpsTo = new List<int>();
-
-		/// <summary>The match predicate</summary>
-		public Func<CodeInstruction, bool> predicate;
-
-		/// <summary>Creates a code match</summary>
-		/// <param name="opcode">The optional opcode</param>
-		/// <param name="operand">The optional operand</param>
-		/// <param name="name">The optional name</param>
-		///
-		public CodeMatch(OpCode? opcode = null, object operand = null, string name = null)
-		{
-			if (opcode is OpCode opcodeValue) opcodes.Add(opcodeValue);
-			if (operand != null) operands.Add(operand);
-			this.name = name;
-		}
-
-		/// <summary>Creates a code match</summary>
-		/// <param name="instruction">The CodeInstruction</param>
-		/// <param name="name">An optional name</param>
-		///
-		public CodeMatch(CodeInstruction instruction, string name = null)
-			: this(instruction.opcode, instruction.operand, name) { }
-
-		/// <summary>Creates a code match</summary>
-		/// <param name="predicate">The predicate</param>
-		/// <param name="name">An optional name</param>
-		///
-		public CodeMatch(Func<CodeInstruction, bool> predicate, string name = null)
-		{
-			this.predicate = predicate;
-			this.name = name;
-		}
-
-		internal bool Matches(List<CodeInstruction> codes, CodeInstruction instruction)
-		{
-			if (predicate != null) return predicate(instruction);
-
-			if (opcodes.Count > 0 && opcodes.Contains(instruction.opcode) == false) return false;
-			if (operands.Count > 0 && operands.Contains(instruction.operand) == false) return false;
-			if (labels.Count > 0 && labels.Intersect(instruction.labels).Any() == false) return false;
-			if (blocks.Count > 0 && blocks.Intersect(instruction.blocks).Any() == false) return false;
-
-			if (jumpsFrom.Count > 0 && jumpsFrom.Select(index => codes[index].operand).OfType<Label>()
-				.Intersect(instruction.labels).Any() == false) return false;
-
-			if (jumpsTo.Count > 0)
-			{
-				var operand = instruction.operand;
-				if (operand == null || operand.GetType() != typeof(Label)) return false;
-				var label = (Label)operand;
-				var indices = Enumerable.Range(0, codes.Count).Where(idx => codes[idx].labels.Contains(label));
-				if (jumpsTo.Intersect(indices).Any() == false) return false;
-			}
-
-			return true;
-		}
-
-		/// <summary>Returns a string that represents the match</summary>
-		/// <returns>A string representation</returns>
-		///
-		public override string ToString()
-		{
-			var result = "[";
-			if (name != null)
-				result += name + ": ";
-			if (opcodes.Count > 0)
-				result += "opcodes=" + opcodes.Join() + " ";
-			if (operands.Count > 0)
-				result += "operands=" + operands.Join() + " ";
-			if (labels.Count > 0)
-				result += "labels=" + labels.Join() + " ";
-			if (blocks.Count > 0)
-				result += "blocks=" + blocks.Join() + " ";
-			if (jumpsFrom.Count > 0)
-				result += "jumpsFrom=" + jumpsFrom.Join() + " ";
-			if (jumpsTo.Count > 0)
-				result += "jumpsTo=" + jumpsTo.Join() + " ";
-			if (predicate != null)
-				result += "predicate=yes ";
-			return result.TrimEnd() + "]";
-		}
-	}
-
 	/// <summary>A CodeInstruction matcher</summary>
 	public class CodeMatcher
 	{
-		readonly ILGenerator generator;
-		readonly List<CodeInstruction> codes = new List<CodeInstruction>();
+		private readonly ILGenerator generator;
+		private readonly List<CodeInstruction> codes = [];
 
 		/// <summary>The current position</summary>
 		/// <value>The index or -1 if out of bounds</value>
 		///
 		public int Pos { get; private set; } = -1;
-		Dictionary<string, CodeInstruction> lastMatches = new Dictionary<string, CodeInstruction>();
-		string lastError;
-		bool lastUseEnd;
-		CodeMatch[] lastCodeMatches;
 
-		void FixStart() { Pos = Math.Max(0, Pos); }
-		void SetOutOfBounds(int direction) { Pos = direction > 0 ? Length : -1; }
+		private Dictionary<string, CodeInstruction> lastMatches = [];
+		private string lastError;
+		private delegate CodeMatcher MatchDelegate();
+		private MatchDelegate lastMatchCall;
+
+		private void FixStart()
+		{
+			Pos = Math.Max(0, Pos);
+		}
+
+		private void SetOutOfBounds(int direction)
+		{
+			Pos = direction > 0 ? Length : -1;
+		}
 
 		/// <summary>Gets the number of code instructions in this matcher</summary>
 		/// <value>The count</value>
@@ -191,8 +97,7 @@ namespace HarmonyLib
 				Pos = Pos,
 				lastMatches = lastMatches,
 				lastError = lastError,
-				lastUseEnd = lastUseEnd,
-				lastCodeMatches = lastCodeMatches
+				lastMatchCall = lastMatchCall
 			};
 		}
 
@@ -243,7 +148,9 @@ namespace HarmonyLib
 		public List<CodeInstruction> InstructionsInRange(int start, int end)
 		{
 			var instructions = codes;
-			if (start > end) { var tmp = start; start = end; end = tmp; }
+			if (start > end)
+				(end, start) = (start, end);
+
 			instructions = instructions.GetRange(start, end - start + 1);
 			return instructions.Select(c => new CodeInstruction(c)).ToList();
 		}
@@ -276,8 +183,85 @@ namespace HarmonyLib
 		{
 			if (IsValid) return false;
 			var err = lastError ?? "Unexpected code";
-			logger(err + " in " + method);
+			logger($"{err} in {method}");
 			return true;
+		}
+
+		/// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed)</summary>
+		/// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher ThrowIfInvalid(string explanation)
+		{
+			if (explanation == null) throw new ArgumentNullException(nameof(explanation));
+			if (IsInvalid) throw new InvalidOperationException(explanation + " - Current state is invalid");
+			return this;
+		}
+
+		/// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+		/// or if the matches do not match at current position</summary>
+		/// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+		/// <param name="matches">Some code matches</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher ThrowIfNotMatch(string explanation, params CodeMatch[] matches)
+		{
+			_ = ThrowIfInvalid(explanation);
+			if (!MatchSequence(Pos, matches)) throw new InvalidOperationException(explanation + " - Match failed");
+			return this;
+		}
+
+		private void ThrowIfNotMatch(string explanation, int direction, CodeMatch[] matches)
+		{
+			_ = ThrowIfInvalid(explanation);
+			var tempPos = Pos;
+			try
+			{
+				if (Match(matches, direction, false).IsInvalid)
+					throw new InvalidOperationException(explanation + " - Match failed");
+			}
+			finally
+			{
+				Pos = tempPos;
+			}
+		}
+
+		/// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+		/// or if the matches do not match at any point between current position and the end</summary>
+		/// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+		/// <param name="matches">Some code matches</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher ThrowIfNotMatchForward(string explanation, params CodeMatch[] matches)
+		{
+			ThrowIfNotMatch(explanation, 1, matches);
+			return this;
+		}
+
+		/// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+		/// or if the matches do not match at any point between current position and the start</summary>
+		/// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+		/// <param name="matches">Some code matches</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher ThrowIfNotMatchBack(string explanation, params CodeMatch[] matches)
+		{
+			ThrowIfNotMatch(explanation, -1, matches);
+			return this;
+		}
+
+		/// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+		/// or if the check function returns false</summary>
+		/// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+		/// <param name="stateCheckFunc">Function that checks validity of current state. If it returns false, an exception is thrown</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher ThrowIfFalse(string explanation, Func<CodeMatcher, bool> stateCheckFunc)
+		{
+			if (stateCheckFunc == null) throw new ArgumentNullException(nameof(stateCheckFunc));
+			_ = ThrowIfInvalid(explanation);
+			if (!stateCheckFunc(this)) throw new InvalidOperationException(explanation + " - Check function returned false");
+			return this;
 		}
 
 		/// <summary>Sets an instruction at current position</summary>
@@ -296,7 +280,7 @@ namespace HarmonyLib
 		///
 		public CodeMatcher SetInstructionAndAdvance(CodeInstruction instruction)
 		{
-			SetInstruction(instruction);
+			_ = SetInstruction(instruction);
 			Pos++;
 			return this;
 		}
@@ -320,7 +304,7 @@ namespace HarmonyLib
 		///
 		public CodeMatcher SetAndAdvance(OpCode opcode, object operand)
 		{
-			Set(opcode, operand);
+			_ = Set(opcode, operand);
 			Pos++;
 			return this;
 		}
@@ -366,8 +350,19 @@ namespace HarmonyLib
 		public CodeMatcher CreateLabelAt(int position, out Label label)
 		{
 			label = generator.DefineLabel();
-			AddLabelsAt(position, new[] { label });
+			_ = AddLabelsAt(position, new[] { label });
 			return this;
+		}
+
+		/// <summary>Creates a label at a position</summary>
+		/// <param name="offset">The offset</param>
+		/// <param name="label">[out] The new label</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher CreateLabelWithOffsets(int offset, out Label label)
+		{
+			label = generator.DefineLabel();
+			return AddLabelsAt(Pos + offset, new[] { label });
 		}
 
 		/// <summary>Adds an enumeration of labels to current position</summary>
@@ -399,9 +394,8 @@ namespace HarmonyLib
 		///
 		public CodeMatcher SetJumpTo(OpCode opcode, int destination, out Label label)
 		{
-			CreateLabelAt(destination, out label);
-			Set(opcode, label);
-			return this;
+			_ = CreateLabelAt(destination, out label);
+			return Set(opcode, label);
 		}
 
 		/// <summary>Inserts some instructions</summary>
@@ -431,7 +425,7 @@ namespace HarmonyLib
 		///
 		public CodeMatcher InsertBranch(OpCode opcode, int destination)
 		{
-			CreateLabelAt(destination, out var label);
+			_ = CreateLabelAt(destination, out var label);
 			codes.Insert(Pos, new CodeInstruction(opcode, label));
 			return this;
 		}
@@ -442,11 +436,12 @@ namespace HarmonyLib
 		///
 		public CodeMatcher InsertAndAdvance(params CodeInstruction[] instructions)
 		{
-			instructions.Do(instruction =>
+			foreach (var instruction in instructions)
 			{
-				Insert(instruction);
+				_ = Insert(instruction);
 				Pos++;
-			});
+			}
+
 			return this;
 		}
 
@@ -456,7 +451,8 @@ namespace HarmonyLib
 		///
 		public CodeMatcher InsertAndAdvance(IEnumerable<CodeInstruction> instructions)
 		{
-			instructions.Do(instruction => InsertAndAdvance(instruction));
+			foreach (var instruction in instructions)
+				_ = InsertAndAdvance(instruction);
 			return this;
 		}
 
@@ -467,7 +463,7 @@ namespace HarmonyLib
 		///
 		public CodeMatcher InsertBranchAndAdvance(OpCode opcode, int destination)
 		{
-			InsertBranch(opcode, destination);
+			_ = InsertBranch(opcode, destination);
 			Pos++;
 			return this;
 		}
@@ -481,13 +477,13 @@ namespace HarmonyLib
 			return this;
 		}
 
-		/// <summary>Removes some instruction fro current position by count</summary>
+		/// <summary>Removes some instruction from current position by count</summary>
 		/// <param name="count">Number of instructions</param>
 		/// <returns>The same code matcher</returns>
 		///
 		public CodeMatcher RemoveInstructions(int count)
 		{
-			codes.RemoveRange(Pos, Pos + count - 1);
+			codes.RemoveRange(Pos, count);
 			return this;
 		}
 
@@ -498,7 +494,9 @@ namespace HarmonyLib
 		///
 		public CodeMatcher RemoveInstructionsInRange(int start, int end)
 		{
-			if (start > end) { var tmp = start; start = end; end = tmp; }
+			if (start > end)
+				(end, start) = (start, end);
+
 			codes.RemoveRange(start, end - start + 1);
 			return this;
 		}
@@ -510,8 +508,7 @@ namespace HarmonyLib
 		///
 		public CodeMatcher RemoveInstructionsWithOffsets(int startOffset, int endOffset)
 		{
-			RemoveInstructionsInRange(Pos + startOffset, Pos + endOffset);
-			return this;
+			return RemoveInstructionsInRange(Pos + startOffset, Pos + endOffset);
 		}
 
 		/// <summary>Advances the current position</summary>
@@ -556,56 +553,76 @@ namespace HarmonyLib
 		/// <param name="predicate">The predicate</param>
 		/// <returns>The same code matcher</returns>
 		///
-		public CodeMatcher SearchBack(Func<CodeInstruction, bool> predicate)
+		public CodeMatcher SearchBackwards(Func<CodeInstruction, bool> predicate)
 		{
 			return Search(predicate, -1);
 		}
 
-		CodeMatcher Search(Func<CodeInstruction, bool> predicate, int direction)
+		private CodeMatcher Search(Func<CodeInstruction, bool> predicate, int direction)
 		{
 			FixStart();
 			while (IsValid && predicate(Instruction) == false)
 				Pos += direction;
-			lastError = IsInvalid ? "Cannot find " + predicate : null;
+			lastError = IsInvalid ? $"Cannot find {predicate}" : null;
 			return this;
 		}
 
-		/// <summary>Matches forward and advances position</summary>
-		/// <param name="useEnd">True to set position to end of match, false to set it to the beginning of the match</param>
+		/// <summary>Matches forward and advances position to beginning of matching sequence</summary>
 		/// <param name="matches">Some code matches</param>
 		/// <returns>The same code matcher</returns>
 		///
-		public CodeMatcher MatchForward(bool useEnd, params CodeMatch[] matches)
+		public CodeMatcher MatchStartForward(params CodeMatch[] matches)
 		{
-			return Match(matches, 1, useEnd);
+			return Match(matches, 1, false);
 		}
 
-		/// <summary>Matches backwards and reverses position</summary>
-		/// <param name="useEnd">True to set position to end of match, false to set it to the beginning of the match</param>
+		/// <summary>Matches forward and advances position to ending of matching sequence</summary>
 		/// <param name="matches">Some code matches</param>
 		/// <returns>The same code matcher</returns>
 		///
-		public CodeMatcher MatchBack(bool useEnd, params CodeMatch[] matches)
+		public CodeMatcher MatchEndForward(params CodeMatch[] matches)
 		{
-			return Match(matches, -1, useEnd);
+			return Match(matches, 1, true);
 		}
 
-		CodeMatcher Match(CodeMatch[] matches, int direction, bool useEnd)
+		/// <summary>Matches backwards and reverses position to beginning of matching sequence</summary>
+		/// <param name="matches">Some code matches</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher MatchStartBackwards(params CodeMatch[] matches)
 		{
-			FixStart();
-			while (IsValid)
+			return Match(matches, -1, false);
+		}
+
+		/// <summary>Matches backwards and reverses position to ending of matching sequence</summary>
+		/// <param name="matches">Some code matches</param>
+		/// <returns>The same code matcher</returns>
+		///
+		public CodeMatcher MatchEndBackwards(params CodeMatch[] matches)
+		{
+			return Match(matches, -1, true);
+		}
+
+		private CodeMatcher Match(CodeMatch[] matches, int direction, bool useEnd)
+		{
+			lastMatchCall = delegate ()
 			{
-				lastUseEnd = useEnd;
-				lastCodeMatches = matches;
-				if (MatchSequence(Pos, matches))
+				FixStart();
+				while (IsValid)
 				{
-					if (useEnd) Pos += matches.Count() - 1;
-					break;
+					if (MatchSequence(Pos, matches))
+					{
+						if (useEnd) Pos += matches.Length - 1;
+						break;
+					}
+
+					Pos += direction;
 				}
-				Pos += direction;
-			}
-			lastError = IsInvalid ? "Cannot find " + matches.Join() : null;
-			return this;
+
+				lastError = IsInvalid ? $"Cannot find {matches.Join()}" : null;
+				return this;
+			};
+			return lastMatchCall();
 		}
 
 		/// <summary>Repeats a match action until boundaries are met</summary>
@@ -616,16 +633,17 @@ namespace HarmonyLib
 		public CodeMatcher Repeat(Action<CodeMatcher> matchAction, Action<string> notFoundAction = null)
 		{
 			var count = 0;
-			if (lastCodeMatches == null)
+			if (lastMatchCall == null)
 				throw new InvalidOperationException("No previous Match operation - cannot repeat");
 
 			while (IsValid)
 			{
 				matchAction(this);
-				MatchForward(lastUseEnd, lastCodeMatches);
+				_ = lastMatchCall();
 				count++;
 			}
-			lastCodeMatches = null;
+
+			lastMatchCall = null;
 
 			if (count == 0 && notFoundAction != null)
 				notFoundAction(lastError);
@@ -642,10 +660,10 @@ namespace HarmonyLib
 			return lastMatches[name];
 		}
 
-		bool MatchSequence(int start, CodeMatch[] matches)
+		private bool MatchSequence(int start, CodeMatch[] matches)
 		{
 			if (start < 0) return false;
-			lastMatches = new Dictionary<string, CodeInstruction>();
+			lastMatches = [];
 			foreach (var match in matches)
 			{
 				if (start >= Length || match.Matches(codes, codes[start]) == false)
@@ -654,6 +672,7 @@ namespace HarmonyLib
 					lastMatches.Add(match.name, codes[start]);
 				start++;
 			}
+
 			return true;
 		}
 	}

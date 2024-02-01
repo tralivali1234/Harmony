@@ -1,14 +1,14 @@
-using HarmonyLib;
+﻿using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
 
-namespace HarmonyLibTests
+namespace HarmonyLibTests.ReversePatching
 {
-	[TestFixture]
-	public class ReverseTranspiling
+	[TestFixture, NonParallelizable]
+	public class ReverseTranspiling : TestLogger
 	{
 		[Test]
-		public void TestReverseTranspilerPatching()
+		public void Test_ReverseTranspilerPatching()
 		{
 			var class0 = new Class0Reverse();
 
@@ -16,27 +16,27 @@ namespace HarmonyLibTests
 			Assert.AreEqual("Original123Prolog", result1);
 
 			var originalClass = typeof(Class0Reverse);
-			Assert.IsNotNull(originalClass);
+			Assert.NotNull(originalClass);
 			var originalMethod = originalClass.GetMethod("Method");
-			Assert.IsNotNull(originalMethod);
+			Assert.NotNull(originalMethod);
 
 			var patchClass = typeof(Class0ReversePatch);
 			var postfix = patchClass.GetMethod("Postfix");
-			Assert.IsNotNull(postfix);
+			Assert.NotNull(postfix);
 
-			//Harmony.DEBUG = true;
 			var instance = new Harmony("test");
-			Assert.IsNotNull(instance);
+			Assert.NotNull(instance);
 
 			var patcher = instance.CreateProcessor(originalMethod);
-			patcher.AddPostfix(new HarmonyMethod(postfix));
-			patcher.Patch();
+			_ = patcher.AddPostfix(new HarmonyMethod(postfix));
+			_ = patcher.Patch();
 
-			var standin = patchClass.GetMethod("StringOperation");
-			Assert.IsNotNull(standin);
+			var standin = new HarmonyMethod(patchClass.GetMethod("StringOperation"));
+			Assert.NotNull(standin);
+			Assert.NotNull(standin.method);
 
 			var reversePatcher = instance.CreateReversePatcher(originalMethod, standin);
-			reversePatcher.Patch();
+			_ = reversePatcher.Patch();
 
 			var result2 = class0.Method("al-gin-Ori", 456);
 			Assert.AreEqual("EpilogOriginal", result2);

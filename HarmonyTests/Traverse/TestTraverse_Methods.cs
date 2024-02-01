@@ -3,10 +3,10 @@ using HarmonyLibTests.Assets;
 using NUnit.Framework;
 using System;
 
-namespace HarmonyLibTests
+namespace HarmonyLibTests.Tools
 {
-	[TestFixture]
-	public class TestTraverse_Methods
+	[TestFixture, NonParallelizable]
+	public class TestTraverse_Methods : TestLogger
 	{
 		[Test]
 		public void Traverse_Method_Instance()
@@ -68,6 +68,17 @@ namespace HarmonyLibTests
 			var mtrv1 = trv.Method("WithOutParameter", types, parameters);
 			Assert.AreEqual("ok", mtrv1.GetValue<string>());
 			Assert.AreEqual("hello", parameters[0]);
+		}
+
+		[Test]
+		public void Traverse_Method_Overloads()
+		{
+			var instance = new TraverseMethods_Overloads();
+			var trv = Traverse.Create(instance);
+
+			var mtrv1 = trv.Method("SomeMethod", new Type[] { typeof(string), typeof(bool) });
+			Assert.AreEqual(true, mtrv1.GetValue<bool>("test", false));
+			Assert.AreEqual(false, mtrv1.GetValue<bool>("test", true));
 		}
 	}
 }

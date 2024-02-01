@@ -10,7 +10,7 @@
     <meta name="viewport" content="width=device-width">
     <meta name="title" content="Namespace HarmonyLib
    ">
-    <meta name="generator" content="docfx 2.42.3.0">
+    <meta name="generator" content="docfx 2.59.4.0">
     
     <link rel="shortcut icon" href="../favicon.ico">
     <link rel="stylesheet" href="../styles/docfx.vendor.css">
@@ -80,8 +80,19 @@
       <h4><a class="xref" href="HarmonyLib.AccessTools.html">AccessTools</a></h4>
       <section><p>A helper class for reflection related functions</p>
 </section>
+      <h4><a class="xref" href="HarmonyLib.AccessToolsExtensions.html">AccessToolsExtensions</a></h4>
+      <section><p>Adds extensions to Type for a lot of AccessTools methods</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.Code.html">Code</a></h4>
+      <section></section>
       <h4><a class="xref" href="HarmonyLib.CodeInstruction.html">CodeInstruction</a></h4>
       <section><p>An abstract wrapper around OpCode and their operands. Used by transpilers</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.CodeInstructionExtensions.html">CodeInstructionExtensions</a></h4>
+      <section><p>Extensions for <a class="xref" href="HarmonyLib.CodeInstruction.html">CodeInstruction</a></p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.CodeInstructionsExtensions.html">CodeInstructionsExtensions</a></h4>
+      <section><p>Extensions for a sequence of <a class="xref" href="HarmonyLib.CodeInstruction.html">CodeInstruction</a></p>
 </section>
       <h4><a class="xref" href="HarmonyLib.CodeMatch.html">CodeMatch</a></h4>
       <section><p>A CodeInstruction match</p>
@@ -125,6 +136,15 @@
       <h4><a class="xref" href="HarmonyLib.HarmonyCleanup.html">HarmonyCleanup</a></h4>
       <section><p>Specifies the Cleanup function in a patch class</p>
 </section>
+      <h4><a class="xref" href="HarmonyLib.HarmonyDebug.html">HarmonyDebug</a></h4>
+      <section><p>A Harmony annotation</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.HarmonyDelegate.html">HarmonyDelegate</a></h4>
+      <section><p>Annotation to define the original method for delegate injection</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.HarmonyException.html">HarmonyException</a></h4>
+      <section><p>Under Mono, HarmonyException wraps IL compile errors with detailed information about the failure</p>
+</section>
       <h4><a class="xref" href="HarmonyLib.HarmonyFinalizer.html">HarmonyFinalizer</a></h4>
       <section><p>Specifies the Finalizer function in a patch class</p>
 </section>
@@ -139,6 +159,9 @@
 </section>
       <h4><a class="xref" href="HarmonyLib.HarmonyPatchAll.html">HarmonyPatchAll</a></h4>
       <section><p>A Harmony annotation to define that all methods in a class are to be patched</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.HarmonyPatchCategory.html">HarmonyPatchCategory</a></h4>
+      <section><p>Annotation to define a category for use with PatchCategory</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.HarmonyPostfix.html">HarmonyPostfix</a></h4>
       <section><p>Specifies the Postfix function in a patch class</p>
@@ -164,14 +187,17 @@
       <h4><a class="xref" href="HarmonyLib.HarmonyTranspiler.html">HarmonyTranspiler</a></h4>
       <section><p>Specifies the Transpiler function in a patch class</p>
 </section>
-      <h4><a class="xref" href="HarmonyLib.Memory.html">Memory</a></h4>
-      <section><p>A low level memory helper</p>
+      <h4><a class="xref" href="HarmonyLib.MethodBaseExtensions.html">MethodBaseExtensions</a></h4>
+      <section><p>General extensions for collections</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.MethodInvoker.html">MethodInvoker</a></h4>
       <section><p>A helper class to invoke method with delegates</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.Patch.html">Patch</a></h4>
       <section><p>A serializable patch</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.PatchClassProcessor.html">PatchClassProcessor</a></h4>
+      <section><p>A PatchClassProcessor used to turn <a class="xref" href="HarmonyLib.HarmonyAttribute.html">HarmonyAttribute</a> on a class/type into patches</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.Patches.html">Patches</a></h4>
       <section><p>A group of patches</p>
@@ -180,7 +206,7 @@
       <section><p>Serializable patch information</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.PatchProcessor.html">PatchProcessor</a></h4>
-      <section><p>A patch processor</p>
+      <section><p>A PatchProcessor handles patches on a method/constructor</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.Priority.html">Priority</a></h4>
       <section><p>A patch priority</p>
@@ -214,13 +240,22 @@
       <h4><a class="xref" href="HarmonyLib.HarmonyReversePatchType.html">HarmonyReversePatchType</a></h4>
       <section><p>Specifies the type of reverse patch</p>
 </section>
+      <h4><a class="xref" href="HarmonyLib.MethodDispatchType.html">MethodDispatchType</a></h4>
+      <section><p>Specifies the type of method call dispatching mechanics</p>
+</section>
       <h4><a class="xref" href="HarmonyLib.MethodType.html">MethodType</a></h4>
       <section><p>Specifies the type of method</p>
 </section>
     <h3 id="delegates">Delegates
   </h3>
-      <h4><a class="xref" href="HarmonyLib.AccessTools.FieldRef-2.html">AccessTools.FieldRef&lt;T, U&gt;</a></h4>
-      <section><p>A read/writable reference to a field</p>
+      <h4><a class="xref" href="HarmonyLib.AccessTools.FieldRef-1.html">AccessTools.FieldRef&lt;F&gt;</a></h4>
+      <section><p>A readable/assignable reference delegate to a static field</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.AccessTools.FieldRef-2.html">AccessTools.FieldRef&lt;T, F&gt;</a></h4>
+      <section><p>A readable/assignable reference delegate to an instance field of a class or static field (NOT an instance field of a struct)</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.AccessTools.StructFieldRef-2.html">AccessTools.StructFieldRef&lt;T, F&gt;</a></h4>
+      <section><p>A readable/assignable reference delegate to an instance field of a struct</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.FastInvokeHandler.html">FastInvokeHandler</a></h4>
       <section><p>A delegate to invoke a method</p>
@@ -244,7 +279,8 @@
                 </ul>
               </div>
               <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
-              <!-- <p><a class="back-to-top" href="#top">Back to top</a><p> -->
+                <h5>In This Article</h5>
+                <div></div>
               </nav>
             </div>
           </div>

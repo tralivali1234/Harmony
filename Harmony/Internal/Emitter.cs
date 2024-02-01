@@ -1,4 +1,6 @@
+using MonoMod.Utils.Cil;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -14,86 +16,122 @@ namespace HarmonyLib
 		}
 	}
 
-	internal static class Emitter
+	internal class Emitter
 	{
-		static readonly GetterHandler<ILGenerator, int> codeLenGetter = FastAccess.CreateFieldGetter<ILGenerator, int>("code_len", "m_length");
-		static readonly GetterHandler<ILGenerator, LocalBuilder[]> localsGetter = FastAccess.CreateFieldGetter<ILGenerator, LocalBuilder[]>("locals");
+		readonly CecilILGenerator il;
+		readonly Dictionary<int, CodeInstruction> instructions = [];
+		readonly bool debug;
+
+		internal Emitter(ILGenerator il, bool debug)
+		{
+			this.il = il.GetProxiedShim<CecilILGenerator>();
+			this.debug = debug;
+		}
+
+		internal Dictionary<int, CodeInstruction> GetInstructions()
+		{
+			return instructions;
+		}
+
+		internal void AddInstruction(OpCode opcode, object operand)
+		{
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, operand));
+		}
+
+		internal int CurrentPos()
+		{
+			return il.ILOffset;
+		}
 
 		internal static string CodePos(int offset)
 		{
-			return string.Format("L_{0:x4}: ", offset);
+			return string.Format("IL_{0:X4}: ", offset);
 		}
 
-		internal static string CodePos(ILGenerator il)
+		internal string CodePos()
 		{
-			var offset = codeLenGetter(il);
-			return CodePos(offset);
+			return CodePos(CurrentPos());
 		}
 
-		internal static void LogComment(ILGenerator il, string comment)
+		internal void LogComment(string comment)
 		{
-			var str = string.Format("{0}// {1}", CodePos(il), comment);
-			FileLog.LogBuffered(str);
-		}
-
-		internal static void LogIL(ILGenerator il, OpCode opCode, object argument)
-		{
-			if (Harmony.DEBUG)
+			if (debug)
 			{
-				var argStr = FormatArgument(argument);
-				var space = argStr.Length > 0 ? " " : "";
-				FileLog.LogBuffered(string.Format("{0}{1}{2}{3}", CodePos(il), opCode, space, argStr));
-			}
-		}
-
-		internal static LocalBuilder[] AllLocalVariables(ILGenerator il)
-		{
-			return localsGetter != null ? localsGetter(il) : new LocalBuilder[0];
-		}
-
-		internal static void LogLocalVariable(LocalBuilder variable)
-		{
-			if (Harmony.DEBUG)
-			{
-				var str = string.Format("{0}Local var {1}: {2}{3}", CodePos(0), variable.LocalIndex, variable.LocalType.FullName, variable.IsPinned ? "(pinned)" : "");
+				var str = string.Format("{0}// {1}", CodePos(), comment);
 				FileLog.LogBuffered(str);
 			}
 		}
 
-		internal static string FormatArgument(object argument)
+		internal void LogIL(OpCode opcode)
 		{
-			if (argument == null) return "NULL";
+			if (debug)
+				FileLog.LogBuffered(string.Format("{0}{1}", CodePos(), opcode));
+		}
+
+		internal void LogIL(OpCode opcode, object arg, string extra = null)
+		{
+			if (debug)
+			{
+				var argStr = FormatArgument(arg, extra);
+				var space = argStr.Length > 0 ? " " : "";
+				var opcodeName = opcode.ToString();
+				if (opcode.FlowControl == FlowControl.Branch || opcode.FlowControl == FlowControl.Cond_Branch) opcodeName += " =>";
+				opcodeName = opcodeName.PadRight(10);
+				FileLog.LogBuffered(string.Format("{0}{1}{2}{3}", CodePos(), opcodeName, space, argStr));
+			}
+		}
+
+		internal void LogAllLocalVariables()
+		{
+			if (debug is false)
+				return;
+
+			il.IL.Body.Variables.Do(v =>
+			{
+				var str = string.Format("{0}Local var {1}: {2}{3}", CodePos(0), v.Index, v.VariableType.FullName, v.IsPinned ? "(pinned)" : "");
+				FileLog.LogBuffered(str);
+			});
+		}
+
+		internal static string FormatArgument(object argument, string extra = null)
+		{
+			if (argument is null) return "NULL";
 			var type = argument.GetType();
 
-			var method = argument as MethodInfo;
-			if (method != null)
-				return ((MethodInfo)argument).FullDescription();
+			if (argument is MethodBase method)
+				return method.FullDescription() + (extra is not null ? " " + extra : "");
+
+			if (argument is FieldInfo field)
+				return $"{field.FieldType.FullDescription()} {field.DeclaringType.FullDescription()}::{field.Name}";
+
+			if (type == typeof(Label))
+				return $"Label{((Label)argument).GetHashCode()}";
+
+			if (type == typeof(Label[]))
+				return $"Labels{string.Join(",", ((Label[])argument).Select(l => l.GetHashCode().ToString()).ToArray())}";
+
+			if (type == typeof(LocalBuilder))
+				return $"{((LocalBuilder)argument).LocalIndex} ({((LocalBuilder)argument).LocalType})";
 
 			if (type == typeof(string))
-				return "\"" + argument + "\"";
-			if (type == typeof(Label))
-				return "Label" + ((Label)argument).GetHashCode();
-			if (type == typeof(Label[]))
-				return "Labels" + string.Join(",", ((Label[])argument).Select(l => l.GetHashCode().ToString()).ToArray());
-			if (type == typeof(LocalBuilder))
-				return ((LocalBuilder)argument).LocalIndex + " (" + ((LocalBuilder)argument).LocalType + ")";
+				return argument.ToString().ToLiteral();
 
 			return argument.ToString().Trim();
 		}
 
-		internal static void MarkLabel(ILGenerator il, Label label)
+		internal void MarkLabel(Label label)
 		{
-			if (Harmony.DEBUG) FileLog.LogBuffered(CodePos(il) + FormatArgument(label));
+			if (debug) FileLog.LogBuffered(CodePos() + FormatArgument(label));
 			il.MarkLabel(label);
 		}
 
-		internal static void MarkBlockBefore(ILGenerator il, ExceptionBlock block, out Label? label)
+		internal void MarkBlockBefore(ExceptionBlock block, out Label? label)
 		{
 			label = null;
 			switch (block.blockType)
 			{
 				case ExceptionBlockType.BeginExceptionBlock:
-					if (Harmony.DEBUG)
+					if (debug)
 					{
 						FileLog.LogBuffered(".try");
 						FileLog.LogBuffered("{");
@@ -103,15 +141,15 @@ namespace HarmonyLib
 					return;
 
 				case ExceptionBlockType.BeginCatchBlock:
-					if (Harmony.DEBUG)
+					if (debug)
 					{
 						// fake log a LEAVE code since BeginCatchBlock() does add it
-						LogIL(il, OpCodes.Leave, new LeaveTry());
+						LogIL(OpCodes.Leave, new LeaveTry());
 
 						FileLog.ChangeIndent(-1);
 						FileLog.LogBuffered("} // end try");
 
-						FileLog.LogBuffered(".catch " + block.catchType);
+						FileLog.LogBuffered($".catch {block.catchType}");
 						FileLog.LogBuffered("{");
 						FileLog.ChangeIndent(1);
 					}
@@ -119,10 +157,10 @@ namespace HarmonyLib
 					return;
 
 				case ExceptionBlockType.BeginExceptFilterBlock:
-					if (Harmony.DEBUG)
+					if (debug)
 					{
 						// fake log a LEAVE code since BeginCatchBlock() does add it
-						LogIL(il, OpCodes.Leave, new LeaveTry());
+						LogIL(OpCodes.Leave, new LeaveTry());
 
 						FileLog.ChangeIndent(-1);
 						FileLog.LogBuffered("} // end try");
@@ -135,10 +173,10 @@ namespace HarmonyLib
 					return;
 
 				case ExceptionBlockType.BeginFaultBlock:
-					if (Harmony.DEBUG)
+					if (debug)
 					{
 						// fake log a LEAVE code since BeginCatchBlock() does add it
-						LogIL(il, OpCodes.Leave, new LeaveTry());
+						LogIL(OpCodes.Leave, new LeaveTry());
 
 						FileLog.ChangeIndent(-1);
 						FileLog.LogBuffered("} // end try");
@@ -151,10 +189,10 @@ namespace HarmonyLib
 					return;
 
 				case ExceptionBlockType.BeginFinallyBlock:
-					if (Harmony.DEBUG)
+					if (debug)
 					{
 						// fake log a LEAVE code since BeginCatchBlock() does add it
-						LogIL(il, OpCodes.Leave, new LeaveTry());
+						LogIL(OpCodes.Leave, new LeaveTry());
 
 						FileLog.ChangeIndent(-1);
 						FileLog.LogBuffered("} // end try");
@@ -168,139 +206,174 @@ namespace HarmonyLib
 			}
 		}
 
-		internal static void MarkBlockAfter(ILGenerator il, ExceptionBlock block)
+		internal void MarkBlockAfter(ExceptionBlock block)
 		{
-			if (block.blockType == ExceptionBlockType.EndExceptionBlock)
+			switch (block.blockType)
 			{
-				if (Harmony.DEBUG)
-				{
-					// fake log a LEAVE code since BeginCatchBlock() does add it
-					LogIL(il, OpCodes.Leave, new LeaveTry());
+				case ExceptionBlockType.EndExceptionBlock:
+					if (debug)
+					{
+						// fake log a LEAVE code since BeginCatchBlock() does add it
+						LogIL(OpCodes.Leave, new LeaveTry());
 
-					FileLog.ChangeIndent(-1);
-					FileLog.LogBuffered("} // end handler");
-				}
-				il.EndExceptionBlock();
+						FileLog.ChangeIndent(-1);
+						FileLog.LogBuffered("} // end handler");
+					}
+					il.EndExceptionBlock();
+					return;
+				default:
+					Console.WriteLine(block.ToString());
+					return;
 			}
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode)
+		internal void Emit(OpCode opcode)
 		{
-			if (Harmony.DEBUG) FileLog.LogBuffered(CodePos(il) + opcode);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode));
+			LogIL(opcode);
 			il.Emit(opcode);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, LocalBuilder local)
+		internal void Emit(OpCode opcode, LocalBuilder local)
 		{
-			LogIL(il, opcode, local);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, local));
+			LogIL(opcode, local);
 			il.Emit(opcode, local);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, FieldInfo field)
+		internal void Emit(OpCode opcode, FieldInfo field)
 		{
-			LogIL(il, opcode, field);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, field));
+			LogIL(opcode, field);
 			il.Emit(opcode, field);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, Label[] labels)
+		internal void Emit(OpCode opcode, Label[] labels)
 		{
-			LogIL(il, opcode, labels);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, labels));
+			LogIL(opcode, labels);
 			il.Emit(opcode, labels);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, Label label)
+		internal void Emit(OpCode opcode, Label label)
 		{
-			LogIL(il, opcode, label);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, label));
+			LogIL(opcode, label);
 			il.Emit(opcode, label);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, string str)
+		internal void Emit(OpCode opcode, string str)
 		{
-			LogIL(il, opcode, str);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, str));
+			LogIL(opcode, str);
 			il.Emit(opcode, str);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, float arg)
+		internal void Emit(OpCode opcode, float arg)
 		{
-			LogIL(il, opcode, arg);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, arg));
+			LogIL(opcode, arg);
 			il.Emit(opcode, arg);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, byte arg)
+		internal void Emit(OpCode opcode, byte arg)
 		{
-			LogIL(il, opcode, arg);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, arg));
+			LogIL(opcode, arg);
 			il.Emit(opcode, arg);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, sbyte arg)
+		internal void Emit(OpCode opcode, sbyte arg)
 		{
-			LogIL(il, opcode, arg);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, arg));
+			LogIL(opcode, arg);
 			il.Emit(opcode, arg);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, double arg)
+		internal void Emit(OpCode opcode, double arg)
 		{
-			LogIL(il, opcode, arg);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, arg));
+			LogIL(opcode, arg);
 			il.Emit(opcode, arg);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, int arg)
+		internal void Emit(OpCode opcode, int arg)
 		{
-			LogIL(il, opcode, arg);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, arg));
+			LogIL(opcode, arg);
 			il.Emit(opcode, arg);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, MethodInfo meth)
+		internal void Emit(OpCode opcode, MethodInfo meth)
 		{
-			LogIL(il, opcode, meth);
+			if (opcode.Equals(OpCodes.Call) || opcode.Equals(OpCodes.Callvirt) || opcode.Equals(OpCodes.Newobj))
+			{
+				EmitCall(opcode, meth, null);
+				return;
+			}
+
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, meth));
+
+			LogIL(opcode, meth);
 			il.Emit(opcode, meth);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, short arg)
+		internal void Emit(OpCode opcode, short arg)
 		{
-			LogIL(il, opcode, arg);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, arg));
+			LogIL(opcode, arg);
 			il.Emit(opcode, arg);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, SignatureHelper signature)
+		internal void Emit(OpCode opcode, SignatureHelper signature)
 		{
-			LogIL(il, opcode, signature);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, signature));
+			LogIL(opcode, signature);
 			il.Emit(opcode, signature);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, ConstructorInfo con)
+		internal void Emit(OpCode opcode, ConstructorInfo con)
 		{
-			LogIL(il, opcode, con);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, con));
+			LogIL(opcode, con);
 			il.Emit(opcode, con);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, Type cls)
+		internal void Emit(OpCode opcode, Type cls)
 		{
-			LogIL(il, opcode, cls);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, cls));
+			LogIL(opcode, cls);
 			il.Emit(opcode, cls);
 		}
 
-		internal static void Emit(ILGenerator il, OpCode opcode, long arg)
+		internal void Emit(OpCode opcode, long arg)
 		{
-			LogIL(il, opcode, arg);
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, arg));
+			LogIL(opcode, arg);
 			il.Emit(opcode, arg);
 		}
 
-		internal static void EmitCall(ILGenerator il, OpCode opcode, MethodInfo methodInfo, Type[] optionalParameterTypes)
+		internal void EmitCall(OpCode opcode, MethodInfo methodInfo, Type[] optionalParameterTypes)
 		{
-			if (Harmony.DEBUG) FileLog.LogBuffered(string.Format("{0}Call {1} {2} {3}", CodePos(il), opcode, methodInfo, optionalParameterTypes));
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, methodInfo));
+			var extra = optionalParameterTypes is not null && optionalParameterTypes.Length > 0 ? optionalParameterTypes.Description() : null;
+			LogIL(opcode, methodInfo, extra);
 			il.EmitCall(opcode, methodInfo, optionalParameterTypes);
 		}
 
-		internal static void EmitCalli(ILGenerator il, OpCode opcode, CallingConvention unmanagedCallConv, Type returnType, Type[] parameterTypes)
+		internal void EmitCalli(OpCode opcode, CallingConvention unmanagedCallConv, Type returnType, Type[] parameterTypes)
 		{
-			if (Harmony.DEBUG) FileLog.LogBuffered(string.Format("{0}Calli {1} {2} {3} {4}", CodePos(il), opcode, unmanagedCallConv, returnType, parameterTypes));
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, unmanagedCallConv));
+			var extra = returnType.FullName + " " + parameterTypes.Description();
+			LogIL(opcode, unmanagedCallConv, extra);
 			il.EmitCalli(opcode, unmanagedCallConv, returnType, parameterTypes);
 		}
 
-		internal static void EmitCalli(ILGenerator il, OpCode opcode, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, Type[] optionalParameterTypes)
+		internal void EmitCalli(OpCode opcode, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, Type[] optionalParameterTypes)
 		{
-			if (Harmony.DEBUG) FileLog.LogBuffered(string.Format("{0}Calli {1} {2} {3} {4} {5}", CodePos(il), opcode, callingConvention, returnType, parameterTypes, optionalParameterTypes));
+			instructions.Add(CurrentPos(), new CodeInstruction(opcode, callingConvention));
+			var extra = returnType.FullName + " " + parameterTypes.Description() + " " + optionalParameterTypes.Description();
+			LogIL(opcode, callingConvention, extra);
 			il.EmitCalli(opcode, callingConvention, returnType, parameterTypes, optionalParameterTypes);
 		}
 	}

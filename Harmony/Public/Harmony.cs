@@ -1,60 +1,79 @@
+using MonoMod;
+using MonoMod.Core.Platforms;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 
 namespace HarmonyLib
 {
 	/// <summary>The Harmony instance is the main entry to Harmony. After creating one with an unique identifier, it is used to patch and query the current application domain</summary>
+	/// 
 	public class Harmony
 	{
 		/// <summary>The unique identifier</summary>
+		/// 
 		public string Id { get; private set; }
 
-		/// <summary>Set to true before instantiating Harmony to debug Harmony</summary>
+		/// <summary>Set to true before instantiating Harmony to debug Harmony or use an environment variable to set HARMONY_DEBUG to '1' like this: cmd /C "set HARMONY_DEBUG=1 &amp;&amp; game.exe"</summary>
+		/// <remarks>This is for full debugging. To debug only specific patches, use the <see cref="HarmonyDebug"/> attribute</remarks>
+		/// 
 		public static bool DEBUG;
 
-		/// <summary>Set to false before instantiating Harmony to prevent Harmony from patching other older instances of itself</summary>
-		public static bool SELF_PATCHING = true;
-
-		static bool selfPatchingDone;
-
 		/// <summary>Creates a new Harmony instance</summary>
-		/// <param name="id">A unique identifier</param>
+		/// <param name="id">A unique identifier (you choose your own)</param>
 		/// <returns>A Harmony instance</returns>
 		///
 		public Harmony(string id)
 		{
-			if (string.IsNullOrEmpty(id)) throw new ArgumentException(nameof(id) + " cannot be null or empty");
+			if (string.IsNullOrEmpty(id)) throw new ArgumentException($"{nameof(id)} cannot be null or empty");
+
+			try
+			{
+				var envDebug = Environment.GetEnvironmentVariable("HARMONY_DEBUG");
+				if (envDebug is not null && envDebug.Length > 0)
+				{
+					envDebug = envDebug.Trim();
+					DEBUG = envDebug == "1" || bool.Parse(envDebug);
+				}
+			}
+			catch
+			{
+			}
 
 			if (DEBUG)
 			{
 				var assembly = typeof(Harmony).Assembly;
 				var version = assembly.GetName().Version;
 				var location = assembly.Location;
+				var environment = Environment.Version.ToString();
+				var platform = Environment.OSVersion.Platform.ToString();
+#if !NET5_0_OR_GREATER
 				if (string.IsNullOrEmpty(location)) location = new Uri(assembly.CodeBase).LocalPath;
-				FileLog.Log("### Harmony id=" + id + ", version=" + version + ", location=" + location);
+#endif
+				FileLog.Log($"### Harmony id={id}, version={version}, location={location}, env/clr={environment}, platform={platform}");
 				var callingMethod = AccessTools.GetOutsideCaller();
-				var callingAssembly = callingMethod.DeclaringType.Assembly;
-				location = callingAssembly.Location;
-				if (string.IsNullOrEmpty(location)) location = new Uri(callingAssembly.CodeBase).LocalPath;
-				FileLog.Log("### Started from " + callingMethod.FullDescription() + ", location " + location);
-				FileLog.Log("### At " + DateTime.Now.ToString("yyyy-MM-dd hh.mm.ss"));
+				if (callingMethod.DeclaringType is not null)
+				{
+					var callingAssembly = callingMethod.DeclaringType.Assembly;
+					location = callingAssembly.Location;
+#if !NET5_0_OR_GREATER
+					if (string.IsNullOrEmpty(location)) location = new Uri(callingAssembly.CodeBase).LocalPath;
+#endif
+					FileLog.Log($"### Started from {callingMethod.FullDescription()}, location {location}");
+					FileLog.Log($"### At {DateTime.Now:yyyy-MM-dd hh.mm.ss}");
+				}
 			}
 
 			Id = id;
 
-			if (!selfPatchingDone)
-			{
-				selfPatchingDone = true;
-				if (SELF_PATCHING)
-					SelfPatching.PatchOldHarmonyMethods();
-			}
+			// TODO: enable to switch to building methods with CECIL
+			// Switches.SetSwitchValue(Switches.DMDType, "cecil");
 		}
 
-		/// <summary>Searches current assembly for Harmony annotations and uses them to create patches</summary>
+		/// <summary>Searches the current assembly for Harmony annotations and uses them to create patches</summary>
+		/// <remarks>This method can fail to use the correct assembly when being inlined. It calls StackTrace.GetFrame(1) which can point to the wrong method/assembly. If you are unsure or run into problems, use <code>PatchAll(Assembly.GetExecutingAssembly())</code> instead.</remarks>
 		/// 
 		public void PatchAll()
 		{
@@ -63,18 +82,32 @@ namespace HarmonyLib
 			PatchAll(assembly);
 		}
 
-		/// <summary>Create a patch processor from an annotated class</summary>
-		/// <param name="type">The class</param>
-		/// 
-		public PatchProcessor ProcessorForAnnotatedClass(Type type)
+		/// <summary>Creates a empty patch processor for an original method</summary>
+		/// <param name="original">The original method/constructor</param>
+		/// <returns>A new <see cref="PatchProcessor"/> instance</returns>
+		///
+		public PatchProcessor CreateProcessor(MethodBase original)
 		{
-			var parentMethodInfos = HarmonyMethodExtensions.GetFromType(type);
-			if (parentMethodInfos != null && parentMethodInfos.Any())
-			{
-				var info = HarmonyMethod.Merge(parentMethodInfos);
-				return new PatchProcessor(this, type, info);
-			}
-			return null;
+			return new PatchProcessor(this, original);
+		}
+
+		/// <summary>Creates a patch class processor from an annotated class</summary>
+		/// <param name="type">The class/type</param>
+		/// <returns>A new <see cref="PatchClassProcessor"/> instance</returns>
+		/// 
+		public PatchClassProcessor CreateClassProcessor(Type type)
+		{
+			return new PatchClassProcessor(this, type);
+		}
+
+		/// <summary>Creates a reverse patcher for one of your stub methods</summary>
+		/// <param name="original">The original method/constructor</param>
+		/// <param name="standin">The stand-in stub method as <see cref="HarmonyMethod"/></param>
+		/// <returns>A new <see cref="ReversePatcher"/> instance</returns>
+		///
+		public ReversePatcher CreateReversePatcher(MethodBase original, HarmonyMethod standin)
+		{
+			return new ReversePatcher(this, original, standin);
 		}
 
 		/// <summary>Searches an assembly for Harmony annotations and uses them to create patches</summary>
@@ -82,64 +115,119 @@ namespace HarmonyLib
 		/// 
 		public void PatchAll(Assembly assembly)
 		{
-			assembly.GetTypes().Do(type => ProcessorForAnnotatedClass(type)?.Patch());
+			AccessTools.GetTypesFromAssembly(assembly).Do(type => CreateClassProcessor(type).Patch());
+		}
+
+		/// <summary>Searches an assembly for Harmony-annotated classes without category annotations and uses them to create patches</summary>
+		/// 
+		public void PatchAllUncategorized()
+		{
+			var method = new StackTrace().GetFrame(1).GetMethod();
+			var assembly = method.ReflectedType.Assembly;
+			PatchAllUncategorized(assembly);
+		}
+
+		/// <summary>Searches an assembly for Harmony-annotated classes without category annotations and uses them to create patches</summary>
+		/// <param name="assembly">The assembly</param>
+		/// 
+		public void PatchAllUncategorized(Assembly assembly)
+		{
+			var patchClasses = AccessTools.GetTypesFromAssembly(assembly).Select(CreateClassProcessor).ToArray();
+			patchClasses.DoIf((patchClass => string.IsNullOrEmpty(patchClass.Category)), (patchClass => patchClass.Patch()));
+		}
+
+		/// <summary>Searches an assembly for Harmony annotations with a specific category and uses them to create patches</summary>
+		/// <param name="category">Name of patch category</param>
+		/// 
+		public void PatchCategory(string category)
+		{
+			var method = new StackTrace().GetFrame(1).GetMethod();
+			var assembly = method.ReflectedType.Assembly;
+			PatchCategory(assembly, category);
+		}
+
+		/// <summary>Searches an assembly for Harmony annotations with a specific category and uses them to create patches</summary>
+		/// <param name="assembly">The assembly</param>
+		/// <param name="category">Name of patch category</param>
+		/// 
+		public void PatchCategory(Assembly assembly, string category)
+		{
+			var patchClasses = AccessTools.GetTypesFromAssembly(assembly).Select(CreateClassProcessor).ToArray();
+			patchClasses.DoIf((patchClass => patchClass.Category == category), (patchClass => patchClass.Patch()));
 		}
 
 		/// <summary>Creates patches by manually specifying the methods</summary>
-		/// <param name="original">The original method</param>
-		/// <param name="prefix">An optional prefix method wrapped in a HarmonyMethod object</param>
-		/// <param name="postfix">An optional postfix method wrapped in a HarmonyMethod object</param>
-		/// <param name="transpiler">An optional transpiler method wrapped in a HarmonyMethod object</param>
-		/// <param name="finalizer">An optional finalizer method wrapped in a HarmonyMethod object</param>
-		/// <returns>The dynamic method that was created to patch the original method</returns>
+		/// <param name="original">The original method/constructor</param>
+		/// <param name="prefix">An optional prefix method wrapped in a <see cref="HarmonyMethod"/> object</param>
+		/// <param name="postfix">An optional postfix method wrapped in a <see cref="HarmonyMethod"/> object</param>
+		/// <param name="transpiler">An optional transpiler method wrapped in a <see cref="HarmonyMethod"/> object</param>
+		/// <param name="finalizer">An optional finalizer method wrapped in a <see cref="HarmonyMethod"/> object</param>
+		/// <returns>The replacement method that was created to patch the original method</returns>
 		///
-		public DynamicMethod Patch(MethodBase original, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod transpiler = null, HarmonyMethod finalizer = null)
+		public MethodInfo Patch(MethodBase original, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod transpiler = null, HarmonyMethod finalizer = null)
 		{
-			var processor = new PatchProcessor(this, original);
-			processor.AddPrefix(prefix);
-			processor.AddPostfix(postfix);
-			processor.AddTranspiler(transpiler);
-			processor.AddFinalizer(finalizer);
-			return processor.Patch().FirstOrDefault();
+			var processor = CreateProcessor(original);
+			_ = processor.AddPrefix(prefix);
+			_ = processor.AddPostfix(postfix);
+			_ = processor.AddTranspiler(transpiler);
+			_ = processor.AddFinalizer(finalizer);
+			return processor.Patch();
 		}
 
-		/// <summary>Unpatches methods</summary>
-		/// <param name="harmonyID">The optional Harmony ID to restrict unpatching to a specific instance</param>
+		/// <summary>Patches a foreign method onto a stub method of yours and optionally applies transpilers during the process</summary>
+		/// <param name="original">The original method/constructor you want to duplicate</param>
+		/// <param name="standin">Your stub method as <see cref="HarmonyMethod"/> that will become the original. Needs to have the correct signature (either original or whatever your transpilers generates)</param>
+		/// <param name="transpiler">An optional transpiler as method that will be applied during the process</param>
+		/// <returns>The replacement method that was created to patch the stub method</returns>
+		/// 
+		public static MethodInfo ReversePatch(MethodBase original, HarmonyMethod standin, MethodInfo transpiler = null)
+		{
+			return PatchFunctions.ReversePatch(standin, original, transpiler);
+		}
+
+		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
+		/// <param name="harmonyID">The optional Harmony ID to restrict unpatching to a specific Harmony instance</param>
+		/// <remarks>This method could be static if it wasn't for the fact that unpatching creates a new replacement method that contains your harmony ID</remarks>
 		///
 		public void UnpatchAll(string harmonyID = null)
 		{
-			bool IDCheck(Patch patchInfo) => harmonyID == null || patchInfo.owner == harmonyID;
+			bool IDCheck(Patch patchInfo) => harmonyID is null || patchInfo.owner == harmonyID;
 
-			var originals = GetPatchedMethods().ToList();
+			var originals = GetAllPatchedMethods().ToList(); // keep as is to avoid "Collection was modified"
 			foreach (var original in originals)
 			{
+				var hasBody = original.HasMethodBody();
 				var info = GetPatchInfo(original);
-				info.Prefixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
-				info.Postfixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
-				info.Transpilers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
-				info.Finalizers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
+				if (hasBody)
+				{
+					info.Postfixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
+					info.Prefixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
+				}
+				info.Transpilers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
+				if (hasBody)
+					info.Finalizers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
 			}
 		}
 
-		/// <summary>Unpatches a method</summary>
-		/// <param name="original">The original method</param>
-		/// <param name="type">The patch type</param>
-		/// <param name="harmonyID">The optional Harmony ID to restrict unpatching to a specific instance</param>
+		/// <summary>Unpatches a method by patching it with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
+		/// <param name="original">The original method/constructor</param>
+		/// <param name="type">The <see cref="HarmonyPatchType"/></param>
+		/// <param name="harmonyID">The optional Harmony ID to restrict unpatching to a specific Harmony instance</param>
 		///
-		public void Unpatch(MethodBase original, HarmonyPatchType type, string harmonyID = null)
+		public void Unpatch(MethodBase original, HarmonyPatchType type, string harmonyID = "*")
 		{
-			var processor = new PatchProcessor(this, original);
-			processor.Unpatch(type, harmonyID);
+			var processor = CreateProcessor(original);
+			_ = processor.Unpatch(type, harmonyID);
 		}
 
-		/// <summary>Unpatches a method</summary>
-		/// <param name="original">The original method</param>
-		/// <param name="patch">The patch method to remove</param>
+		/// <summary>Unpatches a method by patching it with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
+		/// <param name="original">The original method/constructor</param>
+		/// <param name="patch">The patch method as method to remove</param>
 		///
 		public void Unpatch(MethodBase original, MethodInfo patch)
 		{
-			var processor = new PatchProcessor(this, original);
-			processor.Unpatch(patch);
+			var processor = CreateProcessor(original);
+			_ = processor.Unpatch(patch);
 		}
 
 		/// <summary>Test for patches from a specific Harmony ID</summary>
@@ -154,8 +242,8 @@ namespace HarmonyLib
 		}
 
 		/// <summary>Gets patch information for a given original method</summary>
-		/// <param name="method">The original method</param>
-		/// <returns>The patch information</returns>
+		/// <param name="method">The original method/constructor</param>
+		/// <returns>The patch information as <see cref="Patches"/></returns>
 		///
 		public static Patches GetPatchInfo(MethodBase method)
 		{
@@ -163,7 +251,7 @@ namespace HarmonyLib
 		}
 
 		/// <summary>Gets the methods this instance has patched</summary>
-		/// <returns>An enumeration of original methods</returns>
+		/// <returns>An enumeration of original methods/constructors</returns>
 		///
 		public IEnumerable<MethodBase> GetPatchedMethods()
 		{
@@ -171,12 +259,45 @@ namespace HarmonyLib
 				.Where(original => GetPatchInfo(original).Owners.Contains(Id));
 		}
 
-		/// <summary>Gets all patched methods in the appdomain</summary>
-		/// <returns>An enumeration of original methods</returns>
+		/// <summary>Gets all patched original methods in the appdomain</summary>
+		/// <returns>An enumeration of patched original methods/constructors</returns>
 		///
 		public static IEnumerable<MethodBase> GetAllPatchedMethods()
 		{
-			return HarmonySharedState.GetPatchedMethods();
+			return PatchProcessor.GetAllPatchedMethods();
+		}
+
+		/// <summary>Gets the original method from a given replacement method</summary>
+		/// <param name="replacement">A replacement method, for example from a stacktrace</param>
+		/// <returns>The original method/constructor or <c>null</c> if not found</returns>
+		///
+		public static MethodBase GetOriginalMethod(MethodInfo replacement)
+		{
+			if (replacement == null) throw new ArgumentNullException(nameof(replacement));
+			// The runtime can return several different MethodInfo's that point to the same method. Use the correct one
+			var identifiableReplacement = PlatformTriple.Current.GetIdentifiable(replacement) as MethodInfo;
+			return HarmonySharedState.GetOriginal(identifiableReplacement);
+		}
+
+		/// <summary>Tries to get the method from a stackframe including dynamic replacement methods</summary>
+		/// <param name="frame">The <see cref="StackFrame"/></param>
+		/// <returns>For normal frames, <c>frame.GetMethod()</c> is returned. For frames containing patched methods, the replacement method is returned or <c>null</c> if no method can be found</returns>
+		///
+		public static MethodBase GetMethodFromStackframe(StackFrame frame)
+		{
+			if (frame == null) throw new ArgumentNullException(nameof(frame));
+			return HarmonySharedState.FindReplacement(frame) ?? frame.GetMethod();
+		}
+
+		/// <summary>Gets the original method from the stackframe and uses original if method is a dynamic replacement</summary>
+		/// <param name="frame">The <see cref="StackFrame"/></param>
+		/// <returns>The original method from that stackframe</returns>
+		public static MethodBase GetOriginalMethodFromStackframe(StackFrame frame)
+		{
+			var member = GetMethodFromStackframe(frame);
+			if (member is MethodInfo methodInfo)
+				member = GetOriginalMethod(methodInfo) ?? member;
+			return member;
 		}
 
 		/// <summary>Gets Harmony version for all active Harmony instances</summary>
@@ -185,25 +306,7 @@ namespace HarmonyLib
 		///
 		public static Dictionary<string, Version> VersionInfo(out Version currentVersion)
 		{
-			currentVersion = typeof(Harmony).Assembly.GetName().Version;
-			var assemblies = new Dictionary<string, Assembly>();
-			GetAllPatchedMethods().Do(method =>
-			{
-				var info = HarmonySharedState.GetPatchInfo(method);
-				info.prefixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-				info.postfixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-				info.transpilers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-				info.finalizers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-			});
-
-			var result = new Dictionary<string, Version>();
-			assemblies.Do(info =>
-			{
-				var assemblyName = info.Value.GetReferencedAssemblies().FirstOrDefault(a => a.FullName.StartsWith("0Harmony, Version", StringComparison.Ordinal));
-				if (assemblyName != null)
-					result[info.Key] = assemblyName.Version;
-			});
-			return result;
+			return PatchProcessor.VersionInfo(out currentVersion);
 		}
 	}
 }

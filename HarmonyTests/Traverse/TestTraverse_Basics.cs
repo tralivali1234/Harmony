@@ -1,20 +1,20 @@
-using HarmonyLib;
+﻿using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 
-namespace HarmonyLibTests
+namespace HarmonyLibTests.Tools
 {
-	[TestFixture]
-	public class TestTraverse_Basics
+	[TestFixture, NonParallelizable]
+	public class TestTraverse_Basics : TestLogger
 	{
-		static readonly List<string> fieldNames = new List<string> { "_root", "_type", "_info", "_method", "_params" };
+		static readonly List<string> fieldNames = ["_root", "_type", "_info", "_method", "_params"];
 
 		// Basic integrity check for our test class and the field-testvalue relations
 		//
 		[Test]
-		public void Instantiate_TraverseFields_AccessModifiers()
+		public void Test_Instantiate_TraverseFields_AccessModifiers()
 		{
 			var instance = new TraverseFields_AccessModifiers(TraverseFields.testStrings);
 
@@ -23,12 +23,12 @@ namespace HarmonyLibTests
 		}
 
 		[Test]
-		public void Traverse_Has_Expected_Internal_Fields()
+		public void Test_Traverse_Has_Expected_Internal_Fields()
 		{
 			foreach (var name in fieldNames)
 			{
 				var fInfo = AccessTools.DeclaredField(typeof(Traverse), name);
-				Assert.IsNotNull(fInfo);
+				Assert.NotNull(fInfo);
 			}
 		}
 
@@ -40,11 +40,9 @@ namespace HarmonyLibTests
 
 		class FooBar
 		{
-#pragma warning disable IDE0051
 #pragma warning disable CS0169
 			readonly string field;
 #pragma warning restore CS0169
-#pragma warning restore IDE0051
 		}
 
 		// Traverse should default to an empty instance to avoid errors
@@ -76,36 +74,36 @@ namespace HarmonyLibTests
 		{
 			var trv = Traverse.Create(null);
 
-			Assert.IsNotNull(trv);
-			Assert.IsNull(trv.ToString());
+			Assert.NotNull(trv);
+			Assert.Null(trv.ToString());
 
 			// field access
 
 			var ftrv = trv.Field("foo");
-			Assert.IsNotNull(ftrv);
+			Assert.NotNull(ftrv);
 
-			Assert.IsNull(ftrv.GetValue());
-			Assert.IsNull(ftrv.ToString());
+			Assert.Null(ftrv.GetValue());
+			Assert.Null(ftrv.ToString());
 			Assert.AreEqual(0, ftrv.GetValue<int>());
 			Assert.AreSame(ftrv, ftrv.SetValue(123));
 
 			// property access
 
 			var ptrv = trv.Property("foo");
-			Assert.IsNotNull(ptrv);
+			Assert.NotNull(ptrv);
 
-			Assert.IsNull(ptrv.GetValue());
-			Assert.IsNull(ptrv.ToString());
-			Assert.IsNull(ptrv.GetValue<string>());
+			Assert.Null(ptrv.GetValue());
+			Assert.Null(ptrv.ToString());
+			Assert.Null(ptrv.GetValue<string>());
 			Assert.AreSame(ptrv, ptrv.SetValue("test"));
 
 			// method access
 
 			var mtrv = trv.Method("zee");
-			Assert.IsNotNull(mtrv);
+			Assert.NotNull(mtrv);
 
-			Assert.IsNull(mtrv.GetValue());
-			Assert.IsNull(mtrv.ToString());
+			Assert.Null(mtrv.GetValue());
+			Assert.Null(mtrv.ToString());
 			Assert.AreEqual(0, mtrv.GetValue<float>());
 			Assert.AreSame(mtrv, mtrv.SetValue(null));
 		}
@@ -113,7 +111,7 @@ namespace HarmonyLibTests
 		// Traverse.ToString() should return a meaningful string representation of its initial value
 		//
 		[Test]
-		public void Traverse_Create_Instance_ToString()
+		public void Test_Traverse_Create_Instance_ToString()
 		{
 			var instance = new TraverseFields_AccessModifiers(TraverseFields.testStrings);
 
@@ -124,7 +122,7 @@ namespace HarmonyLibTests
 		// Traverse.ToString() should return a meaningful string representation of its initial type
 		//
 		[Test]
-		public void Traverse_Create_Type_ToString()
+		public void Test_Traverse_Create_Type_ToString()
 		{
 			var instance = new TraverseFields_AccessModifiers(TraverseFields.testStrings);
 			Assert.NotNull(instance);

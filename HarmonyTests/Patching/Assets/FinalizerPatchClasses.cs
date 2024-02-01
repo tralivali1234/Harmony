@@ -3,15 +3,42 @@ using System.Runtime.CompilerServices;
 
 namespace HarmonyLibTests.Assets
 {
-	public class OriginalException : Exception { }
-	public class ReplacedException : Exception { }
+	[Serializable]
+	public class OriginalException : Exception
+	{
+		public OriginalException() { }
+		public OriginalException(string message) : base(message) { }
+		public OriginalException(string message, Exception innerException) : base(message, innerException) { }
+		protected OriginalException(System.Runtime.Serialization.SerializationInfo serializationInfo, System.Runtime.Serialization.StreamingContext streamingContext)
+		{
+			throw new NotImplementedException();
+		}
+	}
+
+	[Serializable]
+	public class ReplacedException : Exception
+	{
+		public ReplacedException() { }
+		public ReplacedException(string message) : base(message) { }
+		public ReplacedException(string message, Exception innerException) : base(message, innerException) { }
+		protected ReplacedException(System.Runtime.Serialization.SerializationInfo serializationInfo, System.Runtime.Serialization.StreamingContext streamingContext)
+		{
+			throw new NotImplementedException();
+		}
+	}
 
 	public class NoThrowingVoidMethod
 	{
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void Method()
 		{
-			Console.WriteLine("Method");
+			try
+			{
+				_ = DateTime.Now;
+			}
+			finally
+			{
+			}
 		}
 	}
 
@@ -29,19 +56,22 @@ namespace HarmonyLibTests.Assets
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public string Method()
 		{
-			Console.WriteLine("Method");
+			_ = DateTime.Now;
 			return "OriginalResult";
 		}
 	}
 
 	public class ThrowingStringReturningMethod
 	{
+		// TODO: Mono chokes on patching methods with dead code. The following
+		// will compile into "newobj Void .ctor(); throw" which under mono cannot
+		// have IL code after it without compilation failure (Postfixes or Finalizers).
+		// So for now this is excluded on mono (except for NET Core 3.x where it works)
+
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public string Method()
 		{
-			if (this != null) // satisfy compiler
-				throw new OriginalException();
-			return "OriginalResult";
+			throw new OriginalException();
 		}
 	}
 

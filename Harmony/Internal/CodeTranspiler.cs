@@ -1,16 +1,16 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System;
-using System.Collections;
 
 namespace HarmonyLib
 {
 	internal class CodeTranspiler
 	{
 		readonly IEnumerable<CodeInstruction> codeInstructions;
-		readonly List<MethodInfo> transpilers = new List<MethodInfo>();
+		readonly List<MethodInfo> transpilers = [];
 
 		internal CodeTranspiler(List<ILInstruction> ilInstructions)
 		{
@@ -31,7 +31,7 @@ namespace HarmonyLib
 			{
 				var value = trvSrc.GetValue();
 
-				if (trvDest.FieldExists() == false)
+				if (trvDest.FieldExists() is false)
 				{
 					nonExisting[namePath] = value;
 					return null;
@@ -52,11 +52,10 @@ namespace HarmonyLib
 			if (originalIndex == -1)
 				return false; // no need, new instruction
 
-			Dictionary<string, object> unassigned = null;
-			if (unassignedValues.TryGetValue(op, out unassigned) == false)
+			if (unassignedValues.TryGetValue(op, out var unassigned) is false)
 				return false; // no need, no unassigned info
 
-			if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out var blocksObject) == false)
+			if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out var blocksObject) is false)
 				return false; // no need, no try-catch info
 			var blocks = blocksObject as List<ExceptionBlock>;
 
@@ -67,18 +66,18 @@ namespace HarmonyLib
 			var isStartBlock = blocks.FirstOrDefault(block => block.blockType != ExceptionBlockType.EndExceptionBlock);
 			var isEndBlock = blocks.FirstOrDefault(block => block.blockType == ExceptionBlockType.EndExceptionBlock);
 
-			if (isStartBlock != null && isEndBlock == null)
+			if (isStartBlock is not null && isEndBlock is null)
 			{
 				var pairInstruction = originalInstructions.Skip(originalIndex + 1).FirstOrDefault(instr =>
 				{
-					if (unassignedValues.TryGetValue(instr, out unassigned) == false)
+					if (unassignedValues.TryGetValue(instr, out unassigned) is false)
 						return false;
-					if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) == false)
+					if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 						return false;
 					blocks = blocksObject as List<ExceptionBlock>;
 					return blocks.Any();
 				});
-				if (pairInstruction != null)
+				if (pairInstruction is not null)
 				{
 					var pairStart = originalIndex + 1;
 					var pairEnd = pairStart + originalInstructions.Skip(pairStart).ToList().IndexOf(pairInstruction) - 1;
@@ -88,35 +87,35 @@ namespace HarmonyLib
 
 					pairInstruction = newInstructions.Skip(opIndex + 1).FirstOrDefault(instr =>
 					{
-						if (unassignedValues.TryGetValue(instr, out unassigned) == false)
+						if (unassignedValues.TryGetValue(instr, out unassigned) is false)
 							return false;
-						if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) == false)
+						if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 							return false;
 						blocks = blocksObject as List<ExceptionBlock>;
 						return blocks.Any();
 					});
-					if (pairInstruction != null)
+					if (pairInstruction is not null)
 					{
 						pairStart = opIndex + 1;
 						pairEnd = pairStart + newInstructions.Skip(opIndex + 1).ToList().IndexOf(pairInstruction) - 1;
 						var newBetweenInstructions = newInstructions.GetRange(pairStart, pairEnd - pairStart);
 						var remaining = originalBetweenInstructions.Except(newBetweenInstructions).ToList();
-						return remaining.Any() == false;
+						return remaining.Any() is false;
 					}
 				}
 			}
-			if (isStartBlock == null && isEndBlock != null)
+			if (isStartBlock is null && isEndBlock is not null)
 			{
 				var pairInstruction = originalInstructions.GetRange(0, originalIndex).LastOrDefault(instr =>
 				{
-					if (unassignedValues.TryGetValue(instr, out unassigned) == false)
+					if (unassignedValues.TryGetValue(instr, out unassigned) is false)
 						return false;
-					if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) == false)
+					if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 						return false;
 					blocks = blocksObject as List<ExceptionBlock>;
 					return blocks.Any();
 				});
-				if (pairInstruction != null)
+				if (pairInstruction is not null)
 				{
 					var pairStart = originalInstructions.GetRange(0, originalIndex).LastIndexOf(pairInstruction);
 					var pairEnd = originalIndex;
@@ -126,20 +125,20 @@ namespace HarmonyLib
 
 					pairInstruction = newInstructions.GetRange(0, opIndex).LastOrDefault(instr =>
 					{
-						if (unassignedValues.TryGetValue(instr, out unassigned) == false)
+						if (unassignedValues.TryGetValue(instr, out unassigned) is false)
 							return false;
-						if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) == false)
+						if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 							return false;
 						blocks = blocksObject as List<ExceptionBlock>;
 						return blocks.Any();
 					});
-					if (pairInstruction != null)
+					if (pairInstruction is not null)
 					{
 						pairStart = newInstructions.GetRange(0, opIndex).LastIndexOf(pairInstruction);
 						pairEnd = opIndex;
 						var newBetweenInstructions = newInstructions.GetRange(pairStart, pairEnd - pairStart);
 						var remaining = originalBetweenInstructions.Except(newBetweenInstructions);
-						return remaining.Any() == false;
+						return remaining.Any() is false;
 					}
 				}
 			}
@@ -153,15 +152,16 @@ namespace HarmonyLib
 			var enumerableAssembly = type.GetGenericTypeDefinition().Assembly;
 			var genericListType = enumerableAssembly.GetType(typeof(List<>).FullName);
 			var elementType = type.GetGenericArguments()[0];
-			var listType = enumerableAssembly.GetType(genericListType.MakeGenericType(new Type[] { elementType }).FullName);
+			var genericListTypeWithElement = genericListType.MakeGenericType(new Type[] { elementType });
+			var listType = enumerableAssembly.GetType(genericListTypeWithElement.FullName);
 			var list = Activator.CreateInstance(listType);
 			var listAdd = list.GetType().GetMethod("Add");
-			unassignedValues = new Dictionary<object, Dictionary<string, object>>();
+			unassignedValues = [];
 			foreach (var op in enumerable)
 			{
 				var elementTo = ConvertInstruction(elementType, op, out var unassigned);
 				unassignedValues.Add(elementTo, unassigned);
-				listAdd.Invoke(list, new object[] { elementTo });
+				_ = listAdd.Invoke(list, new object[] { elementTo });
 				// cannot yield return 'elementTo' here because we have an out parameter in the method
 			}
 			return list as IEnumerable;
@@ -184,18 +184,28 @@ namespace HarmonyLib
 					foreach (var field in fields)
 					{
 						if (addExceptionInfo || field.Key != nameof(CodeInstruction.blocks))
-							trv.Field(field.Key).SetValue(field.Value);
+							_ = trv.Field(field.Key).SetValue(field.Value);
 					}
 				}
 				yield return elementTo;
 			}
 		}
 
+		static bool IsCodeInstructionsParameter(Type type)
+		{
+			return type.IsGenericType && type.GetGenericTypeDefinition().Name.StartsWith("IEnumerable", StringComparison.Ordinal);
+		}
+
 		internal static IEnumerable ConvertToGeneralInstructions(MethodInfo transpiler, IEnumerable enumerable, out Dictionary<object, Dictionary<string, object>> unassignedValues)
 		{
 			var type = transpiler.GetParameters()
-				  .Select(p => p.ParameterType)
-				  .FirstOrDefault(t => t.IsGenericType && t.GetGenericTypeDefinition().Name.StartsWith("IEnumerable", StringComparison.Ordinal));
+				.Select(p => p.ParameterType)
+				.FirstOrDefault(t => IsCodeInstructionsParameter(t));
+			if (type == typeof(IEnumerable<CodeInstruction>))
+			{
+				unassignedValues = null;
+				return enumerable as IList<CodeInstruction> ?? (enumerable as IEnumerable<CodeInstruction> ?? enumerable.Cast<CodeInstruction>()).ToList();
+			}
 			return ConvertInstructionsAndUnassignedValues(type, enumerable, out unassignedValues);
 		}
 
@@ -208,7 +218,7 @@ namespace HarmonyLib
 					parameter.Add(generator);
 				else if (type.IsAssignableFrom(typeof(MethodBase)))
 					parameter.Add(method);
-				else
+				else if (IsCodeInstructionsParameter(type))
 					parameter.Add(instructions);
 			});
 			return parameter;
@@ -224,22 +234,27 @@ namespace HarmonyLib
 				instructions = ConvertToGeneralInstructions(transpiler, instructions, out var unassignedValues);
 
 				// remember the order of the original input (for detection of dupped code instructions)
-				var originalInstructions = new List<object>();
-				originalInstructions.AddRange(instructions.Cast<object>());
+				List<object> originalInstructions = null;
+				if (unassignedValues is not null)
+					originalInstructions = instructions.Cast<object>().ToList();
 
 				// call the transpiler
 				var parameter = GetTranspilerCallParameters(generator, transpiler, method, instructions);
-				instructions = transpiler.Invoke(null, parameter.ToArray()) as IEnumerable;
+				var newInstructions = transpiler.Invoke(null, parameter.ToArray()) as IEnumerable;
+				if (newInstructions is object)
+					instructions = newInstructions;
 
 				// convert result back to 'our' CodeInstruction and re-assign otherwise lost fields
-				instructions = ConvertToOurInstructions(instructions, typeof(CodeInstruction), originalInstructions, unassignedValues);
+				if (unassignedValues is not null)
+					instructions = ConvertToOurInstructions(instructions, typeof(CodeInstruction), originalInstructions, unassignedValues);
 			});
-			return instructions.Cast<CodeInstruction>().ToList();
+
+			return instructions as List<CodeInstruction> ?? instructions.Cast<CodeInstruction>().ToList();
 		}
 
 		//
 
-		static readonly Dictionary<OpCode, OpCode> allJumpCodes = new Dictionary<OpCode, OpCode>
+		static readonly Dictionary<OpCode, OpCode> allJumpCodes = new()
 		{
 			{ OpCodes.Beq_S, OpCodes.Beq },
 			{ OpCodes.Bge_S, OpCodes.Bge },
