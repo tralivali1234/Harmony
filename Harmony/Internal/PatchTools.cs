@@ -12,6 +12,9 @@ namespace HarmonyLib
 	internal static class PatchTools
 	{
 		private static readonly Dictionary<MethodBase, ICoreDetour> detours = [];
+		internal static readonly string harmonyMethodFullName = typeof(HarmonyMethod).FullName;
+		internal static readonly string harmonyAttributeFullName = typeof(HarmonyAttribute).FullName;
+		internal static readonly string harmonyPatchAllFullName = typeof(HarmonyPatchAll).FullName;
 
 		internal static void DetourMethod(MethodBase method, MethodBase replacement)
 		{
@@ -29,14 +32,11 @@ namespace HarmonyLib
 		static Assembly GetExecutingAssemblyReplacement()
 		{
 			var frames = new StackTrace().GetFrames();
-			if (frames?.Skip(1).FirstOrDefault() is { } frame && Harmony.GetOriginalMethodFromStackframe(frame) is { } original)
+			if (frames?.Skip(1).FirstOrDefault() is { } frame && Harmony.GetMethodFromStackframe(frame) is { } original)
 				return original.Module.Assembly;
 			return Assembly.GetExecutingAssembly();
 		}
-		internal static IEnumerable<CodeInstruction> GetExecutingAssemblyTranspiler(IEnumerable<CodeInstruction> instructions)
-		{
-			return instructions.MethodReplacer(m_GetExecutingAssembly, m_GetExecutingAssemblyReplacement);
-		}
+		internal static IEnumerable<CodeInstruction> GetExecutingAssemblyTranspiler(IEnumerable<CodeInstruction> instructions) => instructions.MethodReplacer(m_GetExecutingAssembly, m_GetExecutingAssemblyReplacement);
 
 		public static MethodInfo CreateMethod(string name, Type returnType, List<KeyValuePair<string, Type>> parameters, Action<ILGenerator> generator)
 		{
@@ -78,7 +78,7 @@ namespace HarmonyLib
 		internal static List<AttributePatch> GetPatchMethods(Type type)
 		{
 			return AccessTools.GetDeclaredMethods(type)
-				.Select(method => AttributePatch.Create(method))
+				.Select(AttributePatch.Create)
 				.Where(attributePatch => attributePatch is not null)
 				.ToList();
 		}
@@ -96,13 +96,13 @@ namespace HarmonyLib
 
 					case MethodType.Getter:
 						if (attr.methodName is null)
-							return AccessTools.DeclaredIndexer(attr.declaringType, attr.argumentTypes).GetGetMethod(true);
-						return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetGetMethod(true);
+							return AccessTools.DeclaredIndexerGetter(attr.declaringType, attr.argumentTypes);
+						return AccessTools.DeclaredPropertyGetter(attr.declaringType, attr.methodName);
 
 					case MethodType.Setter:
 						if (attr.methodName is null)
-							return AccessTools.DeclaredIndexer(attr.declaringType, attr.argumentTypes).GetSetMethod(true);
-						return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetSetMethod(true);
+							return AccessTools.DeclaredIndexerSetter(attr.declaringType, attr.argumentTypes);
+						return AccessTools.DeclaredPropertySetter(attr.declaringType, attr.methodName);
 
 					case MethodType.Constructor:
 						return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);

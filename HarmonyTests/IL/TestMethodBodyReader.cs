@@ -66,7 +66,11 @@ namespace HarmonyLibTests.IL
 #else
 					Assert.AreEqual("System.Reflection.LocalVariableInfo", instrNoGen.argument.GetType().FullName, "w/o generator argument type @ {0} ({1})", i, instrNoGen);
 #endif
+#if NET9_0_OR_GREATER
+					Assert.AreEqual(Type.GetType("System.Reflection.Emit.RuntimeLocalBuilder"), instrHasGen.argument.GetType(), "w/ generator argument type @ {0} ({1})", i, instrNoGen);
+#else
 					Assert.AreEqual(typeof(LocalBuilder), instrHasGen.argument.GetType(), "w/ generator argument type @ {0} ({1})", i, instrNoGen);
+#endif
 				}
 			}
 		}
@@ -92,10 +96,7 @@ namespace HarmonyLibTests.IL
 
 		struct ILInstructionOffsetComparer : IComparer
 		{
-			public int Compare(object x, object y)
-			{
-				return ((ILInstruction)x).offset.CompareTo(((ILInstruction)y).offset);
-			}
+			public int Compare(object x, object y) => ((ILInstruction)x).offset.CompareTo(((ILInstruction)y).offset);
 		}
 	}
 }

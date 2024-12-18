@@ -54,8 +54,8 @@ namespace HarmonyLib
 		{
 			opcode = instruction.opcode;
 			operand = instruction.operand;
-			labels = instruction.labels.ToList();
-			blocks = instruction.blocks.ToList();
+			labels = [.. instruction.labels];
+			blocks = [.. instruction.blocks];
 		}
 
 		// --- CLONING
@@ -127,37 +127,25 @@ namespace HarmonyLib
 		/// <param name="expression">The lambda expression using the method</param>
 		/// <returns></returns>
 		///
-		public static CodeInstruction Call(Expression<Action> expression)
-		{
-			return new CodeInstruction(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
-		}
+		public static CodeInstruction Call(Expression<Action> expression) => new(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
 
 		/// <summary>Creates a CodeInstruction calling a method (CALL)</summary>
 		/// <param name="expression">The lambda expression using the method</param>
 		/// <returns></returns>
 		///
-		public static CodeInstruction Call<T>(Expression<Action<T>> expression)
-		{
-			return new CodeInstruction(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
-		}
+		public static CodeInstruction Call<T>(Expression<Action<T>> expression) => new(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
 
 		/// <summary>Creates a CodeInstruction calling a method (CALL)</summary>
 		/// <param name="expression">The lambda expression using the method</param>
 		/// <returns></returns>
 		///
-		public static CodeInstruction Call<T, TResult>(Expression<Func<T, TResult>> expression)
-		{
-			return new CodeInstruction(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
-		}
+		public static CodeInstruction Call<T, TResult>(Expression<Func<T, TResult>> expression) => new(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
 
 		/// <summary>Creates a CodeInstruction calling a method (CALL)</summary>
 		/// <param name="expression">The lambda expression using the method</param>
 		/// <returns></returns>
 		///
-		public static CodeInstruction Call(LambdaExpression expression)
-		{
-			return new CodeInstruction(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
-		}
+		public static CodeInstruction Call(LambdaExpression expression) => new(OpCodes.Call, SymbolExtensions.GetMethodInfo(expression));
 
 		/// <summary>Returns an instruction to call the specified closure</summary>
 		/// <typeparam name="T">The delegate type to emit</typeparam>
@@ -192,7 +180,7 @@ namespace HarmonyLib
 					il.Emit(OpCodes.Newobj, AccessTools.FirstConstructor(targetType, x => x.IsStatic == false && x.GetParameters().Length == 0));
 
 				il.Emit(OpCodes.Ldftn, closure.Method);
-				il.Emit(OpCodes.Newobj, AccessTools.Constructor(typeof(T), new[] { typeof(object), typeof(IntPtr) }));
+				il.Emit(OpCodes.Newobj, AccessTools.Constructor(typeof(T), [typeof(object), typeof(IntPtr)]));
 			}
 
 			for (var i = 0; i < parameters.Length; i++)
@@ -316,7 +304,7 @@ namespace HarmonyLib
 			foreach (var block in blocks)
 				list.Add($"EX_{block.blockType.ToString().Replace("Block", "")}");
 
-			var extras = list.Count > 0 ? $" [{string.Join(", ", list.ToArray())}]" : "";
+			var extras = list.Count > 0 ? $" [{string.Join(", ", [.. list])}]" : "";
 			var operandStr = Emitter.FormatArgument(operand);
 			if (operandStr.Length > 0) operandStr = " " + operandStr;
 			return opcode + operandStr + extras;

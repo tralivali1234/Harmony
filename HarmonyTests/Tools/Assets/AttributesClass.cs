@@ -1,5 +1,4 @@
 using HarmonyLib;
-using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -14,30 +13,77 @@ namespace HarmonyLibTests.Assets
 
 	[HarmonyPatch(typeof(string))]
 	[HarmonyPatch("foobar")]
-	[HarmonyPriority(Priority.High)]
-	[HarmonyPatch(new Type[] { typeof(float), typeof(string) })]
+	[HarmonyPriority(Priority.HigherThanNormal)]
+	[HarmonyPatch([typeof(float), typeof(string)])]
 	public class AllAttributesClass
 	{
 		[HarmonyPrepare]
-		public void Method1() { }
-
-		[HarmonyTargetMethod]
-		public void Method2() { }
+		public static bool Method1() => true;
 
 		[HarmonyPrefix]
 		[HarmonyPriority(Priority.High)]
-		public void Method3() { }
+		public static void Method2() { }
 
 		[HarmonyPostfix]
 		[HarmonyBefore("foo", "bar")]
 		[HarmonyAfter("test")]
-		public void Method4() { }
+		public static void Method3() { }
+
+		[HarmonyFinalizer]
+		[HarmonyPriority(Priority.Low)]
+		public static void Method4() { }
+	}
+
+	public class AllAttributesClassMethodsInstance
+	{
+		public static void Test()
+		{
+		}
+	}
+
+	[HarmonyPatch(typeof(AllAttributesClassMethodsInstance), "Test")]
+	[HarmonyPriority(Priority.HigherThanNormal)]
+	public class AllAttributesClassMethods
+	{
+		[HarmonyPrepare]
+		public static bool Method1() => true;
+
+		[HarmonyCleanup]
+		public static void Method2() { }
+
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		public static void Method3Low() { }
+
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.High)]
+		public static void Method3High() { }
+
+		[HarmonyPostfix]
+		[HarmonyBefore("xfoo", "xbar")]
+		[HarmonyAfter("xtest")]
+		[HarmonyPriority(Priority.High)]
+		public static void Method4High() { }
+
+		[HarmonyPostfix]
+		[HarmonyBefore("xfoo", "xbar")]
+		[HarmonyAfter("xtest")]
+		[HarmonyPriority(Priority.Low)]
+		public static void Method4Low() { }
+
+		[HarmonyFinalizer]
+		[HarmonyPriority(Priority.Low)]
+		public static void Method5Low() { }
+
+		[HarmonyFinalizer]
+		[HarmonyPriority(Priority.High)]
+		public static void Method5High() { }
 	}
 
 	public class NoAnnotationsClass
 	{
 		[HarmonyPatch(typeof(List<string>), "TestMethod")]
-		[HarmonyPatch(new Type[] { typeof(string), typeof(string), typeof(string) }, new ArgumentType[] { ArgumentType.Normal, ArgumentType.Ref, ArgumentType.Normal })]
+		[HarmonyPatch([typeof(string), typeof(string), typeof(string)], [ArgumentType.Normal, ArgumentType.Ref, ArgumentType.Normal])]
 		static void Patch() { }
 	}
 

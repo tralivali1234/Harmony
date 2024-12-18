@@ -3,6 +3,7 @@ using MonoMod.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -34,16 +35,23 @@ namespace HarmonyLib
 		const string name = "HarmonySharedState";
 		internal const int internalVersion = 102; // bump this if the layout of the HarmonySharedState type changes
 
-		// state/originals/methodStarts are set to instances stored in the global dynamic types static fields with the same name
+		// state/originals/originalsMono are set to instances stored in the global dynamic types static fields with the same name
 		static readonly Dictionary<MethodBase, byte[]> state;
 		static readonly Dictionary<MethodInfo, MethodBase> originals;
-		
+		static readonly Dictionary<long, MethodBase[]> originalsMono;
+
+		static readonly AccessTools.FieldRef<StackFrame, long> methodAddressRef;
+
 		internal static readonly int actualVersion;
 
 		static HarmonySharedState()
 		{
 			// create singleton type
 			var type = GetOrCreateSharedStateType();
+
+			// this field is useed to find methods from stackframes in Mono
+			if (AccessTools.IsMonoRuntime && AccessTools.Field(typeof(StackFrame), "methodAddress") is FieldInfo field)
+				methodAddressRef = AccessTools.FieldRefAccess<StackFrame, long>(field);
 
 			// copy 'actualVersion' over to our fields
 			var versionField = type.GetField("version");
@@ -61,6 +69,11 @@ namespace HarmonyLib
 			if (originalsField != null && originalsField.GetValue(null) is null)
 				originalsField.SetValue(null, new Dictionary<MethodInfo, MethodBase>());
 
+			// get or initialize global 'originalsMono' field
+			var originalsMonoField = type.GetField("originalsMono");
+			if (originalsMonoField != null && originalsMonoField.GetValue(null) is null)
+				originalsMonoField.SetValue(null, new Dictionary<long, MethodBase[]>());
+
 			// copy 'state' over to our fields
 			state = (Dictionary<MethodBase, byte[]>)stateField.GetValue(null);
 
@@ -68,6 +81,11 @@ namespace HarmonyLib
 			originals = [];
 			if (originalsField != null) // may not exist in older versions
 				originals = (Dictionary<MethodInfo, MethodBase>)originalsField.GetValue(null);
+
+			// copy 'originalsMono' over to our fields
+			originalsMono = [];
+			if (originalsMonoField != null) // may not exist in older versions
+				originalsMono = (Dictionary<long, MethodBase[]>)originalsMonoField.GetValue(null);
 		}
 
 		// creates a dynamic 'global' type if it does not exist
@@ -94,6 +112,12 @@ namespace HarmonyLib
 			));
 
 			typedef.Fields.Add(new FieldDefinition(
+				"originalsMono",
+				Mono.Cecil.FieldAttributes.Public | Mono.Cecil.FieldAttributes.Static,
+				module.ImportReference(typeof(Dictionary<long, MethodBase[]>))
+			));
+
+			typedef.Fields.Add(new FieldDefinition(
 				"version",
 				Mono.Cecil.FieldAttributes.Public | Mono.Cecil.FieldAttributes.Static,
 				module.ImportReference(typeof(int))
@@ -110,6 +134,8 @@ namespace HarmonyLib
 			return PatchInfoSerialization.Deserialize(bytes);
 		}
 
+
+		[SuppressMessage("Style", "IDE0305")]
 		internal static IEnumerable<MethodBase> GetPatchedMethods()
 		{
 			lock (state) return state.Keys.ToArray();
@@ -119,19 +145,49 @@ namespace HarmonyLib
 		{
 			var bytes = patchInfo.Serialize();
 			lock (state) state[original] = bytes;
-			lock (originals) originals[replacement] = original;
+			lock (originals) originals[replacement.Identifiable()] = original;
+			if (AccessTools.IsMonoRuntime)
+			{
+				var methodAddress = (long)replacement.MethodHandle.GetFunctionPointer();
+				lock (originalsMono) originalsMono[methodAddress] = [original, replacement];
+			}
 		}
 
-		internal static MethodBase GetOriginal(MethodInfo replacement)
+		// With mono, useReplacement is used to either return the original or the replacement
+		// On .NET, useReplacement is ignored and the original is always returned
+		internal static MethodBase GetRealMethod(MethodInfo method, bool useReplacement)
 		{
-			lock (originals) return originals.GetValueSafe(replacement);
+			var identifiableMethod = method.Identifiable();
+			lock (originals)
+				if (originals.TryGetValue(identifiableMethod, out var original))
+					return original;
+
+			if (AccessTools.IsMonoRuntime)
+			{
+				var methodAddress = (long)method.MethodHandle.GetFunctionPointer();
+				lock (originalsMono)
+					if (originalsMono.TryGetValue(methodAddress, out var info))
+						return useReplacement ? info[1] : info[0];
+			}
+
+			return method;
 		}
 
-		internal static MethodBase FindReplacement(StackFrame frame)
+		internal static MethodBase GetStackFrameMethod(StackFrame frame, bool useReplacement)
 		{
 			var method = frame.GetMethod() as MethodInfo;
-			if (method == null) return null;
-			return GetOriginal(method);
+			if (method != null)
+				return GetRealMethod(method, useReplacement);
+
+			if (methodAddressRef != null)
+			{
+				var methodAddress = methodAddressRef(frame);
+				lock (originalsMono)
+					if (originalsMono.TryGetValue(methodAddress, out var info))
+						return useReplacement ? info[1] : info[0];
+			}
+
+			return null;
 		}
 	}
 }

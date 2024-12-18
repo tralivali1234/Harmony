@@ -1,7 +1,6 @@
 using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
@@ -58,7 +57,7 @@ namespace HarmonyLibTests.Patching
 
 					var log = AccessTools.DeclaredField(typeof(Class3), "log");
 					var tst = typeof(string);
-					var concat = AccessTools.Method(typeof(string), nameof(string.Concat), new Type[] { tst, tst });
+					var concat = AccessTools.Method(typeof(string), nameof(string.Concat), [tst, tst]);
 					yield return new CodeInstruction(OpCodes.Ldarg_0) { blocks = blocks };
 					yield return new CodeInstruction(OpCodes.Ldarg_0);
 					yield return new CodeInstruction(OpCodes.Ldfld, log);

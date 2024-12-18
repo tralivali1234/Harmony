@@ -62,28 +62,24 @@ namespace HarmonyLib
 			).ToList();
 		}
 
-		internal List<T> GetReplacements()
-		{
-			return state.Values.Select(job => job.replacement).ToList();
-		}
+		internal List<T> GetReplacements() => state.Values.Select(job => job.replacement).ToList();
 	}
 
 	// AttributePatch contains all information for a patch defined by attributes
 	//
 	internal class AttributePatch
 	{
-		static readonly HarmonyPatchType[] allPatchTypes = new[] {
+		static readonly HarmonyPatchType[] allPatchTypes = [
 			HarmonyPatchType.Prefix,
 			HarmonyPatchType.Postfix,
 			HarmonyPatchType.Transpiler,
 			HarmonyPatchType.Finalizer,
 			HarmonyPatchType.ReversePatch,
-		};
+		];
 
 		internal HarmonyMethod info;
 		internal HarmonyPatchType? type;
 
-		static readonly string harmonyAttributeName = typeof(HarmonyAttribute).FullName;
 		internal static AttributePatch Create(MethodInfo patch)
 		{
 			if (patch is null)
@@ -99,13 +95,13 @@ namespace HarmonyLib
 				throw new ArgumentException("Patch method " + patch.FullDescription() + " must be static");
 
 			var list = allAttributes
-				.Where(attr => attr.GetType().BaseType.FullName == harmonyAttributeName)
+				.Where(attr => attr.GetType().BaseType.FullName == PatchTools.harmonyAttributeFullName)
 				.Select(attr =>
 				{
 					var f_info = AccessTools.Field(attr.GetType(), nameof(HarmonyAttribute.info));
 					return f_info.GetValue(attr);
 				})
-				.Select(harmonyInfo => AccessTools.MakeDeepCopy<HarmonyMethod>(harmonyInfo))
+				.Select(AccessTools.MakeDeepCopy<HarmonyMethod>)
 				.ToList();
 			var info = HarmonyMethod.Merge(list);
 			info.method = patch;

@@ -12,15 +12,9 @@ namespace HarmonyLibTests.Assets
 		public static bool prefixCalled = false;
 		public static bool postfixCalled = false;
 
-		public static void Prefix()
-		{
-			prefixCalled = true;
-		}
+		public static void Prefix() => prefixCalled = true;
 
-		public static void Postfix()
-		{
-			postfixCalled = true;
-		}
+		public static void Postfix() => postfixCalled = true;
 
 		public static void ResetTest()
 		{
@@ -31,13 +25,74 @@ namespace HarmonyLibTests.Assets
 
 	// -----------------------------------------------------
 
+	public class ResultRefStruct
+	{
+		// ReSharper disable FieldCanBeMadeReadOnly.Global
+		public static int[] numbersPrefix = [0, 0];
+		public static int[] numbersPostfix = [0, 0];
+		public static int[] numbersPostfixWithNull = [0];
+		public static int[] numbersFinalizer = [0];
+		public static int[] numbersMixed = [0, 0];
+		// ReSharper restore FieldCanBeMadeReadOnly.Global
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public ref int ToPrefix() => ref numbersPrefix[0];
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public ref int ToPostfix() => ref numbersPostfix[0];
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public ref int ToPostfixWithNull() => ref numbersPostfixWithNull[0];
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public ref int ToFinalizer() => throw new Exception();
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public ref int ToMixed() => ref numbersMixed[0];
+	}
+
+	[HarmonyPatch(typeof(ResultRefStruct))]
+	public class ResultRefStruct_Patch
+	{
+		[HarmonyPatch(nameof(ResultRefStruct.ToPrefix))]
+		[HarmonyPrefix]
+		public static bool Prefix(ref RefResult<int> __resultRef)
+		{
+			__resultRef = () => ref ResultRefStruct.numbersPrefix[1];
+			return false;
+		}
+
+		[HarmonyPatch(nameof(ResultRefStruct.ToPostfix))]
+		[HarmonyPostfix]
+		public static void Postfix(ref RefResult<int> __resultRef) => __resultRef = () => ref ResultRefStruct.numbersPostfix[1];
+
+		[HarmonyPatch(nameof(ResultRefStruct.ToPostfixWithNull))]
+		[HarmonyPostfix]
+		public static void PostfixWithNull(ref RefResult<int> __resultRef) => __resultRef = null;
+
+		[HarmonyPatch(nameof(ResultRefStruct.ToFinalizer))]
+		[HarmonyFinalizer]
+		public static Exception Finalizer(ref RefResult<int> __resultRef)
+		{
+			__resultRef = () => ref ResultRefStruct.numbersFinalizer[0];
+			return null;
+		}
+
+		[HarmonyPatch(nameof(ResultRefStruct.ToMixed))]
+		[HarmonyPostfix]
+		public static void PostfixMixed(ref int __result, ref RefResult<int> __resultRef)
+		{
+			__result = 42;
+			__resultRef = () => ref ResultRefStruct.numbersMixed[1];
+		}
+	}
+
+	// -----------------------------------------------------
+
 	public class DeadEndCode
 	{
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public string Method()
-		{
-			throw new FormatException();
-		}
+		public string Method() => throw new FormatException();
 	}
 
 	// not using attributes here because we apply prefix first, then postfix
@@ -46,15 +101,11 @@ namespace HarmonyLibTests.Assets
 		public static bool prefixCalled = false;
 		public static bool postfixCalled = false;
 
-		public static void Prefix()
-		{
-			prefixCalled = true;
-		}
+		public static void Prefix() => prefixCalled = true;
 
-		public static void Postfix()
-		{
-			postfixCalled = true;
-		}
+		public static void Postfix() => postfixCalled = true;
+
+		public static bool PrefixWithControl() => false;
 	}
 
 	[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method))]
@@ -96,10 +147,7 @@ namespace HarmonyLibTests.Assets
 			yield return new CodeInstruction(OpCodes.Ret);
 		}
 
-		static Exception Cleanup(Exception ex)
-		{
-			return ex is null ? null : new ArgumentException("Test", ex);
-		}
+		static Exception Cleanup(Exception ex) => ex is null ? null : new ArgumentException("Test", ex);
 	}
 
 	[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method))]
@@ -110,10 +158,7 @@ namespace HarmonyLibTests.Assets
 			yield return new CodeInstruction(OpCodes.Call, null);
 		}
 
-		static Exception Cleanup()
-		{
-			return null;
-		}
+		static Exception Cleanup() => null;
 	}
 
 	// -----------------------------------------------------
@@ -137,15 +182,9 @@ namespace HarmonyLibTests.Assets
 		public static bool prefixCalled = false;
 		public static bool postfixCalled = false;
 
-		static void Prefix()
-		{
-			prefixCalled = true;
-		}
+		static void Prefix() => prefixCalled = true;
 
-		static void Postfix()
-		{
-			postfixCalled = true;
-		}
+		static void Postfix() => postfixCalled = true;
 	}
 
 	// -----------------------------------------------------
@@ -172,15 +211,9 @@ namespace HarmonyLibTests.Assets
 		public static bool prefixCalled = false;
 		public static bool postfixCalled = false;
 
-		static void Prefix()
-		{
-			prefixCalled = true;
-		}
+		static void Prefix() => prefixCalled = true;
 
-		static void Postfix()
-		{
-			postfixCalled = true;
-		}
+		static void Postfix() => postfixCalled = true;
 	}
 
 	// -----------------------------------------------------
@@ -192,15 +225,9 @@ namespace HarmonyLibTests.Assets
 		public static SomeStruct WasAccepted => new() { accepted = true };
 		public static SomeStruct WasNotAccepted => new() { accepted = false };
 
-		public static implicit operator SomeStruct(bool value)
-		{
-			return value ? WasAccepted : WasNotAccepted;
-		}
+		public static implicit operator SomeStruct(bool value) => value ? WasAccepted : WasNotAccepted;
 
-		public static implicit operator SomeStruct(string value)
-		{
-			return new SomeStruct();
-		}
+		public static implicit operator SomeStruct(string value) => new();
 	}
 
 	public struct AnotherStruct
@@ -212,29 +239,20 @@ namespace HarmonyLibTests.Assets
 
 	public abstract class AbstractClass
 	{
-		public virtual SomeStruct Method(string originalDef, AnotherStruct loc)
-		{
-			return SomeStruct.WasAccepted;
-		}
+		public virtual SomeStruct Method(string originalDef, AnotherStruct loc) => SomeStruct.WasAccepted;
 	}
 
 	public class ConcreteClass : AbstractClass
 	{
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public override SomeStruct Method(string def, AnotherStruct loc)
-		{
-			return true;
-		}
+		public override SomeStruct Method(string def, AnotherStruct loc) => true;
 	}
 
 	[HarmonyPatch(typeof(ConcreteClass))]
 	[HarmonyPatch(nameof(ConcreteClass.Method))]
 	public static class ConcreteClass_Patch
 	{
-		static void Prefix(ConcreteClass __instance, string def, AnotherStruct loc)
-		{
-			TestTools.Log("ConcreteClass_Patch.Method.Prefix");
-		}
+		static void Prefix(ConcreteClass __instance, string def, AnotherStruct loc) => TestTools.Log("ConcreteClass_Patch.Method.Prefix");
 	}
 
 	[HarmonyPatch(typeof(AppDomain), nameof(AppDomain.GetData))]

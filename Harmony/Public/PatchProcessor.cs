@@ -9,10 +9,14 @@ namespace HarmonyLib
 {
 	/// <summary>A PatchProcessor handles patches on a method/constructor</summary>
 	/// 
-	public class PatchProcessor
+	/// <remarks>Creates an empty patch processor</remarks>
+	/// <param name="instance">The Harmony instance</param>
+	/// <param name="original">The original method/constructor</param>
+	///
+	public class PatchProcessor(Harmony instance, MethodBase original)
 	{
-		readonly Harmony instance;
-		readonly MethodBase original;
+		readonly Harmony instance = instance;
+		readonly MethodBase original = original;
 
 		HarmonyMethod prefix;
 		HarmonyMethod postfix;
@@ -20,16 +24,6 @@ namespace HarmonyLib
 		HarmonyMethod finalizer;
 
 		internal static readonly object locker = new();
-
-		/// <summary>Creates an empty patch processor</summary>
-		/// <param name="instance">The Harmony instance</param>
-		/// <param name="original">The original method/constructor</param>
-		///
-		public PatchProcessor(Harmony instance, MethodBase original)
-		{
-			this.instance = instance;
-			this.original = original;
-		}
 
 		/// <summary>Adds a prefix</summary>
 		/// <param name="prefix">The prefix as a <see cref="HarmonyMethod"/></param>
@@ -215,10 +209,7 @@ namespace HarmonyLib
 		/// <param name="patches">Patches to sort</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		public static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches)
-		{
-			return PatchFunctions.GetSortedPatchMethods(original, patches, false);
-		}
+		public static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches) => PatchFunctions.GetSortedPatchMethods(original, patches, false);
 
 		/// <summary>Gets Harmony version for all active Harmony instances</summary>
 		/// <param name="currentVersion">[out] The current Harmony version</param>
@@ -253,7 +244,7 @@ namespace HarmonyLib
 		/// 
 		public static ILGenerator CreateILGenerator()
 		{
-			var method = new DynamicMethodDefinition($"ILGenerator_{Guid.NewGuid()}", typeof(void), new Type[0]);
+			var method = new DynamicMethodDefinition($"ILGenerator_{Guid.NewGuid()}", typeof(void), []);
 			return method.GetILGenerator();
 		}
 
@@ -266,7 +257,7 @@ namespace HarmonyLib
 			var returnType = original is MethodInfo m ? m.ReturnType : typeof(void);
 			var parameterTypes = original.GetParameters().Select(pi => pi.ParameterType).ToList();
 			if (original.IsStatic is false) parameterTypes.Insert(0, original.DeclaringType);
-			var method = new DynamicMethodDefinition($"ILGenerator_{original.Name}", returnType, parameterTypes.ToArray());
+			var method = new DynamicMethodDefinition($"ILGenerator_{original.Name}", returnType, [.. parameterTypes]);
 			return method.GetILGenerator();
 		}
 
@@ -275,10 +266,7 @@ namespace HarmonyLib
 		/// <param name="generator">Optionally an existing generator that will be used to create all local variables and labels contained in the result (if not specified, an internal generator is used)</param>
 		/// <returns>A list containing all the original <see cref="CodeInstruction"/></returns>
 		/// 
-		public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, ILGenerator generator = null)
-		{
-			return MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, 0);
-		}
+		public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, ILGenerator generator = null) => MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, 0);
 
 		/// <summary>Returns the methods unmodified list of code instructions</summary>
 		/// <param name="original">The original method/constructor</param>
@@ -297,10 +285,7 @@ namespace HarmonyLib
 		/// <param name="generator">Optionally an existing generator that will be used to create all local variables and labels contained in the result (if not specified, an internal generator is used)</param>
 		/// <returns>A list of <see cref="CodeInstruction"/></returns>
 		/// 
-		public static List<CodeInstruction> GetCurrentInstructions(MethodBase original, int maxTranspilers = int.MaxValue, ILGenerator generator = null)
-		{
-			return MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, maxTranspilers);
-		}
+		public static List<CodeInstruction> GetCurrentInstructions(MethodBase original, int maxTranspilers = int.MaxValue, ILGenerator generator = null) => MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, maxTranspilers);
 
 		/// <summary>Returns the methods current list of code instructions after all existing transpilers have been applied</summary>
 		/// <param name="original">The original method/constructor</param>

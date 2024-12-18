@@ -83,8 +83,13 @@
       <h4><a class="xref" href="HarmonyLib.AccessToolsExtensions.html">AccessToolsExtensions</a></h4>
       <section><p>Adds extensions to Type for a lot of AccessTools methods</p>
 </section>
-      <h4><a class="xref" href="HarmonyLib.Code.html">Code</a></h4>
+      <h4><a class="xref" href="HarmonyLib.Break_.html">Break_</a></h4>
       <section></section>
+      <h4><a class="xref" href="HarmonyLib.Code.html">Code</a></h4>
+      <section><p>By adding the following using statement to your source code: <code>using static HarmonyLib.Code;</code>
+you can for example start using <code>Ldarg_1</code> in you code instead of <code>new CodeMatch(OpCodes.Ldarg_1)</code>
+and then you can use array notation to add an operand and/or a name: <code>Call[myMethodInfo]</code> instead of <code>new CodeMatch(OpCodes.Call, myMethodInfo)</code></p>
+</section>
       <h4><a class="xref" href="HarmonyLib.CodeInstruction.html">CodeInstruction</a></h4>
       <section><p>An abstract wrapper around OpCode and their operands. Used by transpilers</p>
 </section>
@@ -265,6 +270,9 @@
 </section>
       <h4><a class="xref" href="HarmonyLib.InstantiationHandler-1.html">InstantiationHandler&lt;T&gt;</a></h4>
       <section><p>A constructor delegate type</p>
+</section>
+      <h4><a class="xref" href="HarmonyLib.RefResult-1.html">RefResult&lt;T&gt;</a></h4>
+      <section><p>Delegate type for &quot;ref return&quot; injections</p>
 </section>
       <h4><a class="xref" href="HarmonyLib.SetterHandler-2.html">SetterHandler&lt;T, S&gt;</a></h4>
       <section><p>A setter delegate type</p>

@@ -19,10 +19,7 @@ namespace HarmonyLib
 				.ToList().AsEnumerable();
 		}
 
-		internal void Add(MethodInfo transpiler)
-		{
-			transpilers.Add(transpiler);
-		}
+		internal void Add(MethodInfo transpiler) => transpilers.Add(transpiler);
 
 		internal static object ConvertInstruction(Type type, object instruction, out Dictionary<string, object> unassigned)
 		{
@@ -75,7 +72,7 @@ namespace HarmonyLib
 					if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 						return false;
 					blocks = blocksObject as List<ExceptionBlock>;
-					return blocks.Any();
+					return blocks.Count > 0;
 				});
 				if (pairInstruction is not null)
 				{
@@ -92,7 +89,7 @@ namespace HarmonyLib
 						if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 							return false;
 						blocks = blocksObject as List<ExceptionBlock>;
-						return blocks.Any();
+						return blocks.Count > 0;
 					});
 					if (pairInstruction is not null)
 					{
@@ -100,7 +97,7 @@ namespace HarmonyLib
 						pairEnd = pairStart + newInstructions.Skip(opIndex + 1).ToList().IndexOf(pairInstruction) - 1;
 						var newBetweenInstructions = newInstructions.GetRange(pairStart, pairEnd - pairStart);
 						var remaining = originalBetweenInstructions.Except(newBetweenInstructions).ToList();
-						return remaining.Any() is false;
+						return remaining.Count == 0;
 					}
 				}
 			}
@@ -113,7 +110,7 @@ namespace HarmonyLib
 					if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 						return false;
 					blocks = blocksObject as List<ExceptionBlock>;
-					return blocks.Any();
+					return blocks.Count > 0;
 				});
 				if (pairInstruction is not null)
 				{
@@ -130,7 +127,7 @@ namespace HarmonyLib
 						if (unassigned.TryGetValue(nameof(CodeInstruction.blocks), out blocksObject) is false)
 							return false;
 						blocks = blocksObject as List<ExceptionBlock>;
-						return blocks.Any();
+						return blocks.Count > 0;
 					});
 					if (pairInstruction is not null)
 					{
@@ -152,7 +149,7 @@ namespace HarmonyLib
 			var enumerableAssembly = type.GetGenericTypeDefinition().Assembly;
 			var genericListType = enumerableAssembly.GetType(typeof(List<>).FullName);
 			var elementType = type.GetGenericArguments()[0];
-			var genericListTypeWithElement = genericListType.MakeGenericType(new Type[] { elementType });
+			var genericListTypeWithElement = genericListType.MakeGenericType([elementType]);
 			var listType = enumerableAssembly.GetType(genericListTypeWithElement.FullName);
 			var list = Activator.CreateInstance(listType);
 			var listAdd = list.GetType().GetMethod("Add");
@@ -161,7 +158,7 @@ namespace HarmonyLib
 			{
 				var elementTo = ConvertInstruction(elementType, op, out var unassigned);
 				unassignedValues.Add(elementTo, unassigned);
-				_ = listAdd.Invoke(list, new object[] { elementTo });
+				_ = listAdd.Invoke(list, [elementTo]);
 				// cannot yield return 'elementTo' here because we have an out parameter in the method
 			}
 			return list as IEnumerable;
@@ -191,16 +188,13 @@ namespace HarmonyLib
 			}
 		}
 
-		static bool IsCodeInstructionsParameter(Type type)
-		{
-			return type.IsGenericType && type.GetGenericTypeDefinition().Name.StartsWith("IEnumerable", StringComparison.Ordinal);
-		}
+		static bool IsCodeInstructionsParameter(Type type) => type.IsGenericType && type.GetGenericTypeDefinition().Name.StartsWith("IEnumerable", StringComparison.Ordinal);
 
 		internal static IEnumerable ConvertToGeneralInstructions(MethodInfo transpiler, IEnumerable enumerable, out Dictionary<object, Dictionary<string, object>> unassignedValues)
 		{
 			var type = transpiler.GetParameters()
 				.Select(p => p.ParameterType)
-				.FirstOrDefault(t => IsCodeInstructionsParameter(t));
+				.FirstOrDefault(IsCodeInstructionsParameter);
 			if (type == typeof(IEnumerable<CodeInstruction>))
 			{
 				unassignedValues = null;
@@ -240,7 +234,7 @@ namespace HarmonyLib
 
 				// call the transpiler
 				var parameter = GetTranspilerCallParameters(generator, transpiler, method, instructions);
-				var newInstructions = transpiler.Invoke(null, parameter.ToArray()) as IEnumerable;
+				var newInstructions = transpiler.Invoke(null, [.. parameter]) as IEnumerable;
 				if (newInstructions is object)
 					instructions = newInstructions;
 

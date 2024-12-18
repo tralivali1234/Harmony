@@ -51,6 +51,49 @@ namespace HarmonyLibTests.Patching
 		}
 
 		[Test]
+		public void Test_PatchResultRef()
+		{
+			ResultRefStruct.numbersPrefix = [0, 0];
+			ResultRefStruct.numbersPostfix = [0, 0];
+			ResultRefStruct.numbersPostfixWithNull = [0];
+			ResultRefStruct.numbersFinalizer = [0];
+			ResultRefStruct.numbersMixed = [0, 0];
+
+			var test = new ResultRefStruct();
+
+			var instance = new Harmony("result-ref-test");
+			Assert.NotNull(instance);
+			var processor = instance.CreateClassProcessor(typeof(ResultRefStruct_Patch));
+			Assert.NotNull(processor, "processor");
+
+			test.ToPrefix() = 1;
+			test.ToPostfix() = 2;
+			test.ToPostfixWithNull() = 3;
+			test.ToMixed() = 5;
+
+			Assert.AreEqual(new[] { 1, 0 }, ResultRefStruct.numbersPrefix);
+			Assert.AreEqual(new[] { 2, 0 }, ResultRefStruct.numbersPostfix);
+			Assert.AreEqual(new[] { 3 }, ResultRefStruct.numbersPostfixWithNull);
+			_ = Assert.Throws<Exception>(() => test.ToFinalizer(), "ToFinalizer method does not throw");
+			Assert.AreEqual(new[] { 5, 0 }, ResultRefStruct.numbersMixed);
+
+			var replacements = processor.Patch();
+			Assert.NotNull(replacements, "replacements");
+
+			test.ToPrefix() = -1;
+			test.ToPostfix() = -2;
+			test.ToPostfixWithNull() = -3;
+			test.ToFinalizer() = -4;
+			test.ToMixed() = -5;
+
+			Assert.AreEqual(new[] { 1, -1 }, ResultRefStruct.numbersPrefix);
+			Assert.AreEqual(new[] { 2, -2 }, ResultRefStruct.numbersPostfix);
+			Assert.AreEqual(new[] { -3 }, ResultRefStruct.numbersPostfixWithNull);
+			Assert.AreEqual(new[] { -4 }, ResultRefStruct.numbersFinalizer);
+			Assert.AreEqual(new[] { 42, -5 }, ResultRefStruct.numbersMixed);
+		}
+
+		[Test]
 		public void Test_Patch_ConcreteClass()
 		{
 			var instance = new Harmony("special-case-1");
@@ -111,7 +154,7 @@ namespace HarmonyLibTests.Patching
 
 				var original = AccessTools.DeclaredMethod(cls, name);
 				Assert.NotNull(original, $"{name}: original");
-				var result = original.Invoke(type == "S" ? null : clsInstance, new object[] { "test" });
+				var result = original.Invoke(type == "S" ? null : clsInstance, ["test"]);
 				Assert.NotNull(result, $"{name}: result");
 				Assert.AreEqual($"St{n:D2}", result.GetType().Name);
 
@@ -135,6 +178,9 @@ namespace HarmonyLibTests.Patching
 			var prefix = AccessTools.Method(typeof(DeadEndCode_Patch1), nameof(DeadEndCode_Patch1.Prefix));
 			Assert.NotNull(prefix);
 			var postfix = AccessTools.Method(typeof(DeadEndCode_Patch1), nameof(DeadEndCode_Patch1.Postfix));
+			Assert.NotNull(postfix);
+			var prefixWithControl =
+				AccessTools.Method(typeof(DeadEndCode_Patch1), nameof(DeadEndCode_Patch1.PrefixWithControl));
 			Assert.NotNull(postfix);
 
 			// run original
@@ -165,13 +211,16 @@ namespace HarmonyLibTests.Patching
 			}
 			Assert.True(DeadEndCode_Patch1.prefixCalled);
 
+
+			var isMonoRuntime = AccessTools.IsMonoRuntime;
+			var harmonyMethodPostfix = new HarmonyMethod(postfix);
 			// patch: +postfix
-			if (AccessTools.IsMonoRuntime)
+			if (isMonoRuntime)
 			{
 				// mono should fail
 				try
 				{
-					_ = instance.Patch(original, postfix: new HarmonyMethod(postfix));
+					_ = instance.Patch(original, postfix: harmonyMethodPostfix);
 					Assert.Fail("expecting patch exception");
 				}
 				catch (Exception ex)
@@ -183,7 +232,7 @@ namespace HarmonyLibTests.Patching
 			{
 				// non-mono can add postfix to methods ending in dead code
 
-				_ = instance.Patch(original, postfix: new HarmonyMethod(prefix));
+				_ = instance.Patch(original, postfix: harmonyMethodPostfix);
 				DeadEndCode_Patch1.prefixCalled = false;
 				DeadEndCode_Patch1.postfixCalled = false;
 				// run original
@@ -199,6 +248,16 @@ namespace HarmonyLibTests.Patching
 					Assert.False(DeadEndCode_Patch1.postfixCalled);
 				}
 			}
+
+			_ = instance.Patch(original,
+				prefix: new HarmonyMethod(prefixWithControl),
+				postfix: isMonoRuntime ? harmonyMethodPostfix : null
+			);
+			DeadEndCode_Patch1.prefixCalled = false;
+			DeadEndCode_Patch1.postfixCalled = false;
+			_ = test.Method();
+			Assert.True(DeadEndCode_Patch1.prefixCalled);
+			Assert.True(DeadEndCode_Patch1.postfixCalled);
 		}
 
 		[Test]
@@ -327,7 +386,7 @@ namespace HarmonyLibTests.Patching
 			Assert.NotNull(patcher, "Patch processor");
 			_ = patcher.Patch();
 		}
-		
+
 		[Test]
 		public void Test_PatchEventHandler()
 		{
@@ -348,7 +407,7 @@ namespace HarmonyLibTests.Patching
 			new EventHandlerTestClass().Run();
 			Console.WriteLine($"### EventHandlerTestClass AFTER");
 		}
-		
+
 		[Test]
 		public void Test_PatchMarshalledClass()
 		{
@@ -369,7 +428,7 @@ namespace HarmonyLibTests.Patching
 			new MarshalledTestClass().Run();
 			Console.WriteLine($"### MarshalledTestClass AFTER");
 		}
-		
+
 		[Test]
 		public void Test_MarshalledWithEventHandler1()
 		{
@@ -390,7 +449,7 @@ namespace HarmonyLibTests.Patching
 			new MarshalledWithEventHandlerTest1Class().Run();
 			Console.WriteLine($"### MarshalledWithEventHandlerTest1 AFTER");
 		}
-		
+
 		[Test]
 		public void Test_MarshalledWithEventHandler2()
 		{

@@ -14,17 +14,11 @@ public static class TestPatch
 		original = Assembly.GetExecutingAssembly();
 	}
 
-	private static void Prefix(ref Assembly prefix)
-	{
-		prefix = Assembly.GetExecutingAssembly();
-	}
+	private static void Prefix(ref Assembly prefix) => prefix = Assembly.GetExecutingAssembly();
 
-	private static void Postfix(ref Assembly postfix)
-	{
-		postfix = Assembly.GetExecutingAssembly();
-	}
+	private static void Postfix(ref Assembly postfix) => postfix = Assembly.GetExecutingAssembly();
 
-	private static void Finalizer(Exception __exception) { _ = __exception; }
+	private static void Finalizer(Exception __exception) => _ = __exception;
 
 	private static IEnumerable<CodeInstruction> EmptyTranspiler(IEnumerable<CodeInstruction> instructions) => instructions;
 
@@ -34,7 +28,7 @@ public static class TestPatch
 		original = Assembly.GetExecutingAssembly();
 
 		var instance = new Harmony("test");
-		instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x, ref x, ref x)),
+		_ = instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x, ref x, ref x)),
 			transpiler: SymbolExtensions.GetMethodInfo(() => EmptyTranspiler(null))
 		);
 
@@ -45,7 +39,7 @@ public static class TestPatch
 	public static void TestPatching(out Assembly prefix, out Assembly original, out Assembly postfix)
 	{
 		var instance = new Harmony("test");
-		instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x, ref x, ref x)),
+		_ = instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x, ref x, ref x)),
 			prefix: SymbolExtensions.GetMethodInfo((Assembly x) => Prefix(ref x)),
 			postfix: SymbolExtensions.GetMethodInfo((Assembly x) => Postfix(ref x)),
 			transpiler: SymbolExtensions.GetMethodInfo(() => EmptyTranspiler(null)),

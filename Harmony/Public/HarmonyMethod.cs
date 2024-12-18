@@ -153,7 +153,7 @@ namespace HarmonyLib
 		public static HarmonyMethod Merge(List<HarmonyMethod> attributes)
 		{
 			var result = new HarmonyMethod();
-			if (attributes is null) return result;
+			if (attributes is null || attributes.Count == 0) return result;
 			var resultTrv = Traverse.Create(result);
 			attributes.ForEach(attribute =>
 			{
@@ -199,18 +199,12 @@ namespace HarmonyLib
 		/// <summary>Creates a patch from a given method</summary>
 		/// <param name="method">The original method</param>
 		///
-		public static implicit operator HarmonyMethod(MethodInfo method)
-		{
-			return new HarmonyMethod(method);
-		}
+		public static implicit operator HarmonyMethod(MethodInfo method) => new(method);
 
 		/// <summary>Creates a patch from a given method</summary>
 		/// <param name="delegate">The original method</param>
 		///
-		public static implicit operator HarmonyMethod(Delegate @delegate)
-		{
-			return new HarmonyMethod(@delegate);
-		}
+		public static implicit operator HarmonyMethod(Delegate @delegate) => new(@delegate);
 	}
 
 	/// <summary>Annotation extensions</summary>
@@ -273,11 +267,23 @@ namespace HarmonyLib
 			{
 				var baseValue = masterTrv.Field(f).GetValue();
 				var detailValue = detailTrv.Field(f).GetValue();
-				// This if is needed because priority defaults to -1
-				// This causes the value of a HarmonyPriority attribute to be overriden by the next attribute if it is not merged last
-				// should be removed by making priority nullable and default to null at some point
-				if (f != nameof(HarmonyMethod.priority) || (int)detailValue != -1)
+				if (f != nameof(HarmonyMethod.priority))
 					SetValue(resultTrv, f, detailValue ?? baseValue);
+				else
+				{
+					// This if is needed because priority defaults to -1
+					// This causes the value of a HarmonyPriority attribute to be overriden by the next attribute if it is not merged last
+					// should be removed by making priority nullable and default to null at some point
+
+					var baseInt = (int)baseValue;
+					var detailInt = (int)detailValue;
+					var priority = Math.Max(baseInt, detailInt);
+					if (baseInt == -1 && detailInt != -1)
+						priority = detailInt;
+					if (baseInt != -1 && detailInt == -1)
+						priority = baseInt;
+					SetValue(resultTrv, f, priority);
+				}
 			});
 			return result;
 		}
@@ -286,7 +292,7 @@ namespace HarmonyLib
 		{
 			var f_info = attribute.GetType().GetField(nameof(HarmonyAttribute.info), AccessTools.all);
 			if (f_info is null) return null;
-			if (f_info.FieldType.FullName != typeof(HarmonyMethod).FullName) return null;
+			if (f_info.FieldType.FullName != PatchTools.harmonyMethodFullName) return null;
 			var info = f_info.GetValue(attribute);
 			return AccessTools.MakeDeepCopy<HarmonyMethod>(info);
 		}
@@ -298,7 +304,7 @@ namespace HarmonyLib
 		public static List<HarmonyMethod> GetFromType(Type type)
 		{
 			return type.GetCustomAttributes(true)
-						.Select(attr => GetHarmonyMethodInfo(attr))
+						.Select(GetHarmonyMethodInfo)
 						.Where(info => info is not null)
 						.ToList();
 		}
@@ -307,10 +313,7 @@ namespace HarmonyLib
 		/// <param name="type">The class/type</param>
 		/// <returns>The merged <see cref="HarmonyMethod"/></returns>
 		///
-		public static HarmonyMethod GetMergedFromType(Type type)
-		{
-			return HarmonyMethod.Merge(GetFromType(type));
-		}
+		public static HarmonyMethod GetMergedFromType(Type type) => HarmonyMethod.Merge(GetFromType(type));
 
 		/// <summary>Gets all annotations on a method</summary>
 		/// <param name="method">The method/constructor</param>
@@ -319,7 +322,7 @@ namespace HarmonyLib
 		public static List<HarmonyMethod> GetFromMethod(MethodBase method)
 		{
 			return method.GetCustomAttributes(true)
-						.Select(attr => GetHarmonyMethodInfo(attr))
+						.Select(GetHarmonyMethodInfo)
 						.Where(info => info is not null)
 						.ToList();
 		}
@@ -328,9 +331,6 @@ namespace HarmonyLib
 		/// <param name="method">The method/constructor</param>
 		/// <returns>The merged <see cref="HarmonyMethod"/></returns>
 		///
-		public static HarmonyMethod GetMergedFromMethod(MethodBase method)
-		{
-			return HarmonyMethod.Merge(GetFromMethod(method));
-		}
+		public static HarmonyMethod GetMergedFromMethod(MethodBase method) => HarmonyMethod.Merge(GetFromMethod(method));
 	}
 }

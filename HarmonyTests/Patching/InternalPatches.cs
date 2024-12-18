@@ -17,10 +17,7 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(assembly, thisAssembly);
 		}
 
-		private static void Prefix(ref Assembly assembly)
-		{
-			assembly = Assembly.GetExecutingAssembly();
-		}
+		private static void Prefix(ref Assembly assembly) => assembly = Assembly.GetExecutingAssembly();
 
 		private static void Postfix(ref Assembly assembly)
 		{
@@ -40,7 +37,7 @@ namespace HarmonyLibTests.Patching
 			var assemblyOriginal = Assembly.GetExecutingAssembly();
 
 			var instance = new Harmony("test");
-			instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x)),
+			_ = instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x)),
 				prefix: SymbolExtensions.GetMethodInfo((Assembly x) => Prefix(ref x)),
 				postfix: SymbolExtensions.GetMethodInfo((Assembly x) => Postfix(ref x)),
 				transpiler: SymbolExtensions.GetMethodInfo(() => EmptyTranspiler(null)),
@@ -57,7 +54,7 @@ namespace HarmonyLibTests.Patching
 			var assemblyOriginal = Assembly.GetExecutingAssembly();
 
 			var instance = new Harmony("test");
-			instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x)),
+			_ = instance.Patch(SymbolExtensions.GetMethodInfo((Assembly x) => Method(ref x)),
 				prefix: SymbolExtensions.GetMethodInfo((Assembly x) => Prefix(ref x)),
 				postfix: SymbolExtensions.GetMethodInfo((Assembly x) => Postfix(ref x)),
 				transpiler: SymbolExtensions.GetMethodInfo(() => EmptyTranspiler(null))

@@ -17,6 +17,8 @@ using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Performance", "CA1822")]
 [assembly: SuppressMessage("Performance", "CA1806")]
+[assembly: SuppressMessage("Performance", "CA1859")]
 
+[assembly: SuppressMessage("", "CA1016")]
 [assembly: SuppressMessage("", "CS0649")]
 [assembly: SuppressMessage("", "IDE0251")]
